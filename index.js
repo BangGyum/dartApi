@@ -23,7 +23,7 @@ let cachedData = null;  // 캐시 변수
 
 // XML 파일을 읽고 JSON으로 변환하여 캐시
 const loadXMLData = () => {
-  return new Promise((resolve, reject) => {
+  return new Promise((resolve, reject) => { //비동기
     fs.readFile(xmlFilePath, 'utf8', (err, xmlData) => {
       if (err) {
         return reject(err);
@@ -67,7 +67,7 @@ app.get('/search', (req, res) => {
 });
 
 app.get('/', (req, res) => {
-  res.send('Hello World!')
+  res.send('search?corp_code=00126308 ')
 })
 
 app.listen(port, () => {
