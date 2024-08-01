@@ -1,12 +1,20 @@
 const express = require('express')
 require('dotenv').config();
 const fs = require('fs');
+const axios = require('axios');
+const path = require('path');
 const xml2js = require('xml2js');
 const app = express()
 const port = 3000
 
 const apiKey = process.env.API_KEY;
+const API_URL = `https://opendart.fss.or.kr/api/corpCode.xml?crtfc_key=${apiKey}`;
+const OUTPUT_FILE_PATH = path.join(__dirname, 'CORPCODE.xml'); // 저장할 파일 경로
 
+const xmlFilePath = './CORPCODE.xml';// XML 파일 경로
+
+//npm install express axios node-cron xml2js  //주기적으로 호출하기 
+//npm install express axios
 //npm install dotenv
 //npm install express xml2js
 //npm install nodemon --save-dev
@@ -21,8 +29,22 @@ const apiKey = process.env.API_KEY;
 
 //http://localhost:3000/search?corp_code=00126308
 
-// XML 파일 경로
-const xmlFilePath = './CORPCODE.xml';
+// XML 파일 다운로드 및 저장
+const downloadXmlFile = async () => {
+  try {
+      const response = await axios.get(API_URL);
+      const xmlData = response.data;
+
+      // XML 데이터를 파일에 저장 (덮어쓰기)
+      fs.writeFileSync(OUTPUT_FILE_PATH, xmlData, 'utf8');
+      console.log('XML 파일이 저장되었습니다.');
+  } catch (error) {
+      console.error('API 호출 오류:', error);
+      throw new Error('XML 파일 다운로드에 실패했습니다.');
+  }
+};
+
+
 let cachedData = null;  // 캐시 변수
 
 // XML 파일을 읽고 JSON으로 변환하여 캐시
@@ -70,8 +92,19 @@ app.get('/search', (req, res) => {
   }
 });
 
+// 다운로드 엔드포인트
+app.get('/download', async (req, res) => {
+  try {
+      await downloadXmlFile();
+      res.send('XML 파일이 성공적으로 다운로드되었습니다.');
+  } catch (error) {
+      res.status(500).send('서버 오류: XML 파일 다운로드에 실패했습니다.');
+  }
+});
+
+
 app.get('/', (req, res) => {
-  res.send('search?corp_code=00126308 ')
+  res.send(`${API_URL}`)
 })
 
 app.get('/api', (req,res) => {
