@@ -1,9 +1,13 @@
 const express = require('express')
+require('dotenv').config();
 const fs = require('fs');
 const xml2js = require('xml2js');
 const app = express()
 const port = 3000
 
+const apiKey = process.env.API_KEY;
+
+//npm install dotenv
 //npm install express xml2js
 //npm install nodemon --save-dev
 //삼성E&A
@@ -68,6 +72,10 @@ app.get('/search', (req, res) => {
 
 app.get('/', (req, res) => {
   res.send('search?corp_code=00126308 ')
+})
+
+app.get('/api', (req,res) => {
+  res.send(`Your API key is: ${apiKey}`);
 })
 
 app.listen(port, () => {
