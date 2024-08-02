@@ -4,15 +4,21 @@ const fs = require('fs');
 const axios = require('axios');
 const path = require('path');
 const xml2js = require('xml2js');
+const AdmZip = require('adm-zip');
 const app = express()
 const port = 3000
 
 const apiKey = process.env.API_KEY;
 const API_URL = `https://opendart.fss.or.kr/api/corpCode.xml?crtfc_key=${apiKey}`;
-const OUTPUT_FILE_PATH = path.join(__dirname, 'CORPCODE.xml'); // 저장할 파일 경로
+const OUTPUT_ZIP_PATH = path.join(__dirname, 'companies.zip'); // 다운로드할 ZIP 파일 경로
+const OUTPUT_FILE_PATH = path.join(__dirname, './corpCode/CORPCODE.xml'); // 저장할 파일 경로
+const UNZIP_DIR = path.join(__dirname, '/corpCode'); // 압축 해제할 디렉토리
 
-const xmlFilePath = './CORPCODE.xml';// XML 파일 경로
+const xmlFilePath = './corpCode/CORPCODE.xml';// XML 파일 경로
 
+let cachedData = null;  // 캐시 변수
+
+//npm install express axios adm-zip  //zip파일 풀기
 //npm install express axios node-cron xml2js  //주기적으로 호출하기 
 //npm install express axios
 //npm install dotenv
@@ -29,23 +35,59 @@ const xmlFilePath = './CORPCODE.xml';// XML 파일 경로
 
 //http://localhost:3000/search?corp_code=00126308
 
-// XML 파일 다운로드 및 저장
-const downloadXmlFile = async () => {
+// ZIP 파일 다운로드 및 압축 해제
+const downloadAndUnzipFile = async () => {
   try {
-      const response = await axios.get(API_URL);
-      const xmlData = response.data;
+      const response = await axios.get(API_URL, { responseType: 'arraybuffer' });
+      
+      // ZIP 파일 저장
+      fs.writeFileSync(OUTPUT_ZIP_PATH, response.data);
 
-      // XML 데이터를 파일에 저장 (덮어쓰기)
-      fs.writeFileSync(OUTPUT_FILE_PATH, xmlData, 'utf8');
-      console.log('XML 파일이 저장되었습니다.');
+      // ZIP 파일 압축 해제
+      const zip = new AdmZip(OUTPUT_ZIP_PATH);
+      zip.extractAllTo(UNZIP_DIR, true); // 압축 해제 (덮어쓰기)
+
+      console.log('ZIP 파일이 다운로드 및 압축 해제되었습니다.');
   } catch (error) {
       console.error('API 호출 오류:', error);
-      throw new Error('XML 파일 다운로드에 실패했습니다.');
+      throw new Error('ZIP 파일 다운로드 및 압축 해제에 실패했습니다.');
   }
 };
 
+// 다운로드 및 XML 읽기 엔드포인트
+app.get('/zip', async (req, res) => {
+  try {
+      await downloadAndUnzipFile();
+      
+      // 압축 해제된 XML 파일 경로
+      const xmlFilePath = path.join(UNZIP_DIR, 'CORPCODE.xml'); // 압축 해제된 XML 파일 이름
+      console.log('XML 파일 경로:', xmlFilePath); // XML 파일 경로 로그
 
-let cachedData = null;  // 캐시 변수
+      // XML 파일이 존재하는지 확인
+      if (!fs.existsSync(xmlFilePath)) {
+          console.error('XML 파일이 존재하지 않습니다:', xmlFilePath);
+          return res.status(404).send('XML 파일을 찾을 수 없습니다.');
+      }
+
+      const xmlData = await loadXMLData(xmlFilePath);
+
+      // XML 데이터를 캐시
+      cachedData = xmlData; // XML 데이터를 메모리에 캐시
+      console.log('XML 데이터가 메모리에 캐시되었습니다.');
+
+      // 캐시 확인 메시지 추가
+      if (cachedData) {
+          console.log('캐시된 데이터:', cachedData); // 캐시된 데이터 출력
+      }
+
+      res.json(cachedData); // JSON 형식으로 응답
+
+  } catch (error) {
+      console.error('서버 오류:', error); // 오류 로그
+      res.status(500).send('서버 오류: ZIP 파일 다운로드 및 XML 읽기에 실패했습니다.');
+  }
+});
+
 
 // XML 파일을 읽고 JSON으로 변환하여 캐시
 const loadXMLData = () => {
