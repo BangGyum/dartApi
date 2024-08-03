@@ -54,6 +54,7 @@ const downloadAndUnzipFile = async () => {
   }
 };
 
+
 // 다운로드 및 XML 읽기 엔드포인트
 app.get('/zip', async (req, res) => {
   try {
@@ -153,6 +154,35 @@ app.get('/api', (req,res) => {
   res.send(`Your API key is: ${apiKey}`);
 })
 
+// corp_code로 corp_name 검색 (쿼리 파라미터 사용)
+app.get('/corp_name', (req, res) => {
+  const corpCode = req.query.corp_code; // 쿼리 파라미터에서 corp_code 가져오기
+  if (!cachedData) {
+      return res.status(500).send('캐시된 데이터가 없습니다.');
+  }
+
+  const result = cachedData.find(item => item.corp_code[0] === corpCode);
+  if (result) {
+      res.json({ corp_code: result.corp_code[0], corp_name: result.corp_name[0] });
+  } else {
+      res.status(404).send('해당 corp_code를 찾을 수 없습니다.');
+  }
+});
+
+// corp_name으로 corp_code 검색 (쿼리 파라미터 사용)
+app.get('/corp_code', (req, res) => {
+  const corpName = req.query.corp_name; // 쿼리 파라미터에서 corp_name 가져오기
+  if (!cachedData) {
+      return res.status(500).send('캐시된 데이터가 없습니다.');
+  }
+
+  const result = cachedData.find(item => item.corp_name[0] === corpName);
+  if (result) {
+      res.json({ corp_name: result.corp_name[0], corp_code: result.corp_code[0] });
+  } else {
+      res.status(404).send('해당 corp_name을 찾을 수 없습니다.');
+  }
+});
 app.listen(port, () => {
   console.log(`서버가 http://localhost:${port}에서 실행 중입니다.`);
 });
