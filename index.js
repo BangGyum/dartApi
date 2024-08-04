@@ -172,17 +172,44 @@ app.get('/corp_name', (req, res) => {
 // corp_name으로 corp_code 검색 (쿼리 파라미터 사용)
 app.get('/corp_code', (req, res) => {
   const corpName = req.query.corp_name; // 쿼리 파라미터에서 corp_name 가져오기
-  if (!cachedData) {
+  if (!cachedData || cachedData.length === 0) {
       return res.status(500).send('캐시된 데이터가 없습니다.');
   }
 
-  const result = cachedData.find(item => item.corp_name[0] === corpName);
-  if (result) {
-      res.json({ corp_name: result.corp_name[0], corp_code: result.corp_code[0] });
+  // 부분 문자열 일치를 위해 filter 사용
+  const results = cachedData.filter(item => 
+      item.corp_name[0].includes(corpName) // corp_name의 첫 번째 요소에서 부분 문자열 검색
+  );
+
+  if (results.length > 1) {// 여러 결과가 있을 경우, 그저 목록 반환
+      const response = results.map(item => ({
+          corp_code: item.corp_code[0],
+          corp_name: item.corp_name[0]
+      }));
+      res.json(response);
+  } else if (results.length === 1) {
+    // 하나의 결과가 있을 경우
+    const singleResult = results[0];
+    const corpCode = singleResult.corp_code[0];
+    
+    // 다른 함수로 호출 (예시로 다른 함수를 호출)
+    anotherFunction(corpCode)
+        .then(data => res.json(data)) // 다른 함수에서 반환된 데이터를 클라이언트에 응답
+        .catch(err => res.status(500).send('서버 오류'));
   } else {
       res.status(404).send('해당 corp_name을 찾을 수 없습니다.');
   }
 });
+
+function anotherFunction(corpCode) { //여기서 cropCode로 1분기 실적 가져오기 연습
+  return new Promise((resolve, reject) => {
+      // 여기에 corpCode를 사용하여 필요한 작업 수행
+      // 예시로 더미 데이터를 반환
+      const data = { message: `Corp code ${corpCode}에 대한 데이터입니다.` };
+      resolve(data);
+  });
+}
+
 app.listen(port, () => {
   console.log(`서버가 http://localhost:${port}에서 실행 중입니다.`);
 });
