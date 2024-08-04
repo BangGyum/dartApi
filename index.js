@@ -27,12 +27,6 @@ let cachedData = null;  // 캐시 변수
 //삼성E&A
 //00126308
 
-/*1분기보고서 : 11013
-반기보고서 : 11012 
-3분기보고서 : 11014
-사업보고서 : 11011
-*/
-
 //http://localhost:3000/search?corp_code=00126308
 
 // ZIP 파일 다운로드 및 압축 해제
@@ -181,19 +175,31 @@ app.get('/corp_code', (req, res) => {
       item.corp_name[0].includes(corpName) // corp_name의 첫 번째 요소에서 부분 문자열 검색
   );
 
-  if (results.length > 1) {// 여러 결과가 있을 경우, 그저 목록 반환
-      const response = results.map(item => ({
+  // 동일한 corp_name을 가진 항목들 중 최신 modify_date 찾기
+  const uniqueResults = {};
+  results.forEach(item => {
+      const name = item.corp_name[0];
+      if (!uniqueResults[name] || uniqueResults[name].modify_date[0] < item.modify_date[0]) {
+          uniqueResults[name] = item; // 최신 항목으로 업데이트
+      }
+  });
+  
+   // uniqueResults 객체를 배열로 변환
+  const finalResults = Object.values(uniqueResults);
+
+  if (finalResults.length > 1) {// 여러 결과가 있을 경우, 그저 목록 반환
+      const response = finalResults.map(item => ({
           corp_code: item.corp_code[0],
           corp_name: item.corp_name[0]
       }));
       res.json(response);
-  } else if (results.length === 1) {
+  } else if (finalResults.length === 1) {
     // 하나의 결과가 있을 경우
-    const singleResult = results[0];
+    const singleResult = finalResults[0];
     const corpCode = singleResult.corp_code[0];
     
     // 다른 함수로 호출 (예시로 다른 함수를 호출)
-    anotherFunction(corpCode)
+    fetchFinancialIndicators(corpCode)
         .then(data => res.json(data)) // 다른 함수에서 반환된 데이터를 클라이언트에 응답
         .catch(err => res.status(500).send('서버 오류'));
   } else {
@@ -201,15 +207,41 @@ app.get('/corp_code', (req, res) => {
   }
 });
 
-function anotherFunction(corpCode) { //여기서 cropCode로 1분기 실적 가져오기 연습
-  return new Promise((resolve, reject) => {
-      // 여기에 corpCode를 사용하여 필요한 작업 수행
-      // 예시로 더미 데이터를 반환
-      const data = { message: `Corp code ${corpCode}에 대한 데이터입니다.` };
-      resolve(data);
+function fetchFinancialIndicators(corpCode) {
+  return new Promise(async (resolve, reject) => {
+    // 추가 API 엔드포인트 정의
+    /*
+    _reprtCode , 보고서코드
+    1분기보고서 : 11013
+    반기보고서 : 11012
+    3분기보고서 : 11014
+    사업보고서 : 11011
+    ______
+    _idxClCode , 지표분류코드
+    수익성지표 : M210000 
+    안정성지표 : M220000 
+    성장성지표 : M230000 
+    활동성지표 : M240000
+    */
+    const bsnsYear = '2024' //사업연도
+    const reprtCode = '11013'
+    const idxClCode = 'M210000'
+    const additionalApiUrl = `https://opendart.fss.or.kr/api/fnlttSinglIndx.json?crtfc_key=${apiKey}&corp_code=${corpCode}&bsns_year=${bsnsYear}&reprt_code=${reprtCode}&idx_cl_code=${idxClCode}`;
+    
+    try {
+      // 추가 API에 요청
+      const response = await axios.get(additionalApiUrl);
+      
+      // 가져온 데이터로 해결
+      resolve(response.data);
+    } catch (error) {
+      // 오류 처리 및 프로미스 거부
+      console.error('추가 API에서 데이터 가져오기 실패:', error);
+      reject(error);
+    }
   });
 }
 
 app.listen(port, () => {
-  console.log(`서버가 http://localhost:${port}에서 실행 중입니다.`);
+  console.log(`서버가 http://localhost:${port}에서 실행 중입  니다.`);
 });
