@@ -8,6 +8,8 @@ const AdmZip = require('adm-zip');
 const app = express()
 const port = 3000
 
+//https://opendart.fss.or.kr/guide/detail.do?apiGrpCd=DS003&apiId=2019020
+
 const apiKey = process.env.API_KEY;
 const API_URL = `https://opendart.fss.or.kr/api/corpCode.xml?crtfc_key=${apiKey}`;
 const OUTPUT_ZIP_PATH = path.join(__dirname, 'companies.zip'); // 다운로드할 ZIP 파일 경로
