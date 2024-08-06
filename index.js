@@ -228,7 +228,7 @@ function fetchFinancialIndicators(corpCode) {
     const bsnsYear = '2024' //사업연도
     const reprtCode = '11013'
     const idxClCode = 'M210000'
-    const additionalApiUrl = `https://opendart.fss.or.kr/api/fnlttSinglIndx.json?crtfc_key=${apiKey}&corp_code=${corpCode}&bsns_year=${bsnsYear}&reprt_code=${reprtCode}&idx_cl_code=${idxClCode}`;
+    const additionalApiUrl = `https://opendart.fss.or.kr/api/fnlttSinglAcntAll.json?crtfc_key=${apiKey}&corp_code=${corpCode}&bsns_year=${bsnsYear}&reprt_code=${reprtCode}&idx_cl_code=${idxClCode}&fs_div=OFS`;
     
     try {
       // 추가 API에 요청
