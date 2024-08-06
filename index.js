@@ -200,17 +200,6 @@ app.get('/corp_code', (req, res) => {
     const singleResult = finalResults[0];
     const corpCode = singleResult.corp_code[0];
     
-    // 다른 함수로 호출 (예시로 다른 함수를 호출)
-    fetchFinancialIndicators(corpCode)
-        .then(data => res.json(data)) // 다른 함수에서 반환된 데이터를 클라이언트에 응답
-        .catch(err => res.status(500).send('서버 오류'));
-  } else {
-      res.status(404).send('해당 corp_name을 찾을 수 없습니다.');
-  }
-});
-
-function fetchFinancialIndicators(corpCode) {
-  return new Promise(async (resolve, reject) => {
     // 추가 API 엔드포인트 정의
     /*
     _reprtCode , 보고서코드
@@ -228,6 +217,18 @@ function fetchFinancialIndicators(corpCode) {
     const bsnsYear = '2024' //사업연도
     const reprtCode = '11013'
     const idxClCode = 'M210000'
+    // 다른 함수로 호출 (예시로 다른 함수를 호출)
+    fetchFinancialIndicators(corpCode,bsnsYear,reprtCode,idxClCode)
+        .then(data => res.json(data)) // 다른 함수에서 반환된 데이터를 클라이언트에 응답
+        .catch(err => res.status(500).send('서버 오류'));
+  } else {
+      res.status(404).send('해당 corp_name을 찾을 수 없습니다.');
+  }
+});
+
+function fetchFinancialIndicators(corpCode,bsnsYear,reprtCode,idxClCode) {
+  return new Promise(async (resolve, reject) => {
+
     const additionalApiUrl = `https://opendart.fss.or.kr/api/fnlttSinglAcntAll.json?crtfc_key=${apiKey}&corp_code=${corpCode}&bsns_year=${bsnsYear}&reprt_code=${reprtCode}&idx_cl_code=${idxClCode}&fs_div=OFS`;
     
     try {
