@@ -20,6 +20,18 @@ const xmlFilePath = './corpCode/CORPCODE.xml';// XML 파일 경로
 
 let cachedData = null;  // 캐시 변수
 
+const currentDate = new Date(); // 현재 날짜 가져오기
+const currentYear = currentDate.getFullYear(); // 현재 연도
+const currentMonth = currentDate.getMonth(); // 현재 월 (0부터 11까지)
+const currentQuarter = Math.floor(currentMonth / 3) + 1; // 현재 분기 계산 (1~4)
+const yearsList = [];
+
+for (let i = 0; i <= 3; i++) {
+    yearsList.push(currentYear - i); // 현재 연도에서 0, 1, 2, 3년 전 연도 추가
+}
+
+
+
 //npm install express axios adm-zip  //zip파일 풀기
 //npm install express axios node-cron xml2js  //주기적으로 호출하기 
 //npm install express axios
@@ -166,7 +178,7 @@ app.get('/corp_name', (req, res) => {
 });
 
 // corp_name으로 corp_code 검색 (쿼리 파라미터 사용)
-app.get('/corp_code', (req, res) => {
+app.get('/corp_code', async(req, res) => {
   const corpName = req.query.corp_name; // 쿼리 파라미터에서 corp_name 가져오기
   if (!cachedData || cachedData.length === 0) {
       return res.status(500).send('캐시된 데이터가 없습니다.');
@@ -200,6 +212,17 @@ app.get('/corp_code', (req, res) => {
     const singleResult = finalResults[0];
     const corpCode = singleResult.corp_code[0];
     
+    // 다른 함수로 호출 (예시로 다른 함수를 호출)
+    fetchFinancialIndicators(corpCode)
+        .then(data => res.json(data)) // 다른 함수에서 반환된 데이터를 클라이언트에 응답
+        .catch(err => res.status(500).send('서버 오류'));
+  } else {
+      res.status(404).send('해당 corp_name을 찾을 수 없습니다.');
+  }
+});
+
+function fetchFinancialIndicators(corpCode) {
+  return new Promise(async (resolve, reject) => {
     // 추가 API 엔드포인트 정의
     /*
     _reprtCode , 보고서코드
@@ -217,19 +240,7 @@ app.get('/corp_code', (req, res) => {
     const bsnsYear = '2024' //사업연도
     const reprtCode = '11013'
     const idxClCode = 'M210000'
-    // 다른 함수로 호출 (예시로 다른 함수를 호출)
-    fetchFinancialIndicators(corpCode,bsnsYear,reprtCode,idxClCode)
-        .then(data => res.json(data)) // 다른 함수에서 반환된 데이터를 클라이언트에 응답
-        .catch(err => res.status(500).send('서버 오류'));
-  } else {
-      res.status(404).send('해당 corp_name을 찾을 수 없습니다.');
-  }
-});
-
-function fetchFinancialIndicators(corpCode,bsnsYear,reprtCode,idxClCode) {
-  return new Promise(async (resolve, reject) => {
-
-    const additionalApiUrl = `https://opendart.fss.or.kr/api/fnlttSinglAcntAll.json?crtfc_key=${apiKey}&corp_code=${corpCode}&bsns_year=${bsnsYear}&reprt_code=${reprtCode}&idx_cl_code=${idxClCode}&fs_div=OFS`;
+    const additionalApiUrl = `https://opendart.fss.or.kr/api/fnlttSinglIndx.json?crtfc_key=${apiKey}&corp_code=${corpCode}&bsns_year=${bsnsYear}&reprt_code=${reprtCode}&idx_cl_code=${idxClCode}`;
     
     try {
       // 추가 API에 요청
