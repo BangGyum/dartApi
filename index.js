@@ -233,7 +233,9 @@ app.get('/corp_code', async(req, res) => {
     let yearOffset = 0; // 연도 오프셋 초기화
     let fetchedQuarters = 0; // 가져온 분기 수 초기화
 
-    while (fetchedQuarters < 8) {
+    //Error: socket hang up, 8번 호출하면 dart 사이트 자체가 다운됨
+    //내일 다시 시도
+    while (fetchedQuarters < 2) {
         let year = currentYear - Math.floor((currentQuarter - 1 + yearOffset) / 4);
         let quarter = (currentQuarter - 1 + yearOffset) % 4 + 1;
 
