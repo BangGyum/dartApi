@@ -10,8 +10,12 @@ const port = 3000
 
 //https://opendart.fss.or.kr/guide/detail.do?apiGrpCd=DS003&apiId=2019020
 
+
+
 const apiKey = process.env.API_KEY;
-const API_URL = `https://opendart.fss.or.kr/api/corpCode.xml?crtfc_key=${apiKey}`;
+const additionalApiUrl = `https://opendart.fss.or.kr/api/fnlttSinglAcnt.json?crtfc_key=${apiKey}&corp_code=${corpCode}&bsns_year=${bsnsYear}&reprt_code=${reprtCode}&idx_cl_code=${idxClCode}&fs_div=OFS`;
+//특정 기업의 재무제표
+const API_URL = `https://opendart.fss.or.kr/api/corpCode.xml?crtfc_key=${apiKey}`;//모든 기업목록
 const OUTPUT_ZIP_PATH = path.join(__dirname, 'companies.zip'); // 다운로드할 ZIP 파일 경로
 const OUTPUT_FILE_PATH = path.join(__dirname, './corpCode/CORPCODE.xml'); // 저장할 파일 경로
 const UNZIP_DIR = path.join(__dirname, '/corpCode'); // 압축 해제할 디렉토리
@@ -46,7 +50,10 @@ for (let i = 0; i <= 3; i++) {
 // ZIP 파일 다운로드 및 압축 해제
 const downloadAndUnzipFile = async () => {
   try {
+      console.log('--------------------------------start api----------------------------')
+      console.log(API_URL, ' ++ 기업목록 xml 다운로드 시작 ')
       const response = await axios.get(API_URL, { responseType: 'arraybuffer' });
+      console.log(API_URL, ' ++ 기업목록 xml 다운로드 성공 ')
       
       // ZIP 파일 저장
       fs.writeFileSync(OUTPUT_ZIP_PATH, response.data);
@@ -177,7 +184,9 @@ app.get('/corp_name', (req, res) => {
   }
 });
 
-// corp_name으로 corp_code 검색 (쿼리 파라미터 사용)
+// corp_name 하나를 받아서 그걸로 검색
+// 검색한 값이 하나인 경우 해당 기업의 정보를 가져올 거임. -> 캐시된 데이터에서 찾을 것.
+// 기업의 정보를 가져올텐데. 
 app.get('/corp_code', async(req, res) => {
   const corpName = req.query.corp_name; // 쿼리 파라미터에서 corp_name 가져오기
   if (!cachedData || cachedData.length === 0) {
@@ -275,15 +284,16 @@ app.get('/corp_code', async(req, res) => {
 
 function fetchFinancialIndicators(corpCode, bsnsYear, reprtCode, idxClCode) {
   return new Promise(async (resolve, reject) => {
-    // 추가 API 엔드포인트 정의
 
-    const additionalApiUrl = `https://opendart.fss.or.kr/api/fnlttSinglAcntAll.json?crtfc_key=${apiKey}&corp_code=${corpCode}&bsns_year=${bsnsYear}&reprt_code=${reprtCode}&idx_cl_code=${idxClCode}&fs_div=OFS`;
     
     try {
       // 추가 API에 요청
+      console.log('--------------------------------start api----------------------------')
+      console.log(API_URL, ' ++ 단일기업 재무제표 시작 ')
       const response = await axios.get(additionalApiUrl);
+      console.log(API_URL, ' ++ 단일기업 재무제표 json 성공 ')
 
-      console.log(additionalApiUrl)
+      console.log('additionalApiUrl: ',additionalApiUrl)
       console.log(response.data.list)
       
       // 가져온 데이터로 해결
