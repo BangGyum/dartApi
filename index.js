@@ -13,7 +13,7 @@ const port = 3000
 
 
 const apiKey = process.env.API_KEY;
-const additionalApiUrl = `https://opendart.fss.or.kr/api/fnlttSinglAcnt.json?crtfc_key=${apiKey}&corp_code=${corpCode}&bsns_year=${bsnsYear}&reprt_code=${reprtCode}&idx_cl_code=${idxClCode}&fs_div=OFS`;
+
 //특정 기업의 재무제표
 const API_URL = `https://opendart.fss.or.kr/api/corpCode.xml?crtfc_key=${apiKey}`;//모든 기업목록
 const OUTPUT_ZIP_PATH = path.join(__dirname, 'companies.zip'); // 다운로드할 ZIP 파일 경로
@@ -244,13 +244,19 @@ app.get('/corp_code', async(req, res) => {
 
     //Error: socket hang up, 8번 호출하면 dart 사이트 자체가 다운됨
     //내일 다시 시도
-    /*
-    while (fetchedQuarters < 1) {
+
+    
+    while (fetchedQuarters < 3) {
         let year = currentYear - Math.floor((currentQuarter - 1 + yearOffset) / 4);
         let quarter = (currentQuarter - 1 + yearOffset) % 4 + 1;
 
+        yearOffset++; // 다음 분기를 위해 오프셋 증가
+        fetchedQuarters++; // 가져온 분기 수 증가
+        console.log('currentQuarter : ', currentQuarter, '//year : ' , year ,'//quater : ',quarter)
+    }
         //임시로 dataImsy 데이터를 가져와서 분석하는걸로 
         // 데이터 확인 및 가져오기
+        /*
         const response = await fetchFinancialIndicators(corpCode, year, reprtCode, idxClCode);
 
         //JSON 응답에서 데이터 확인
@@ -262,14 +268,15 @@ app.get('/corp_code', async(req, res) => {
 
         yearOffset++; // 다음 분기를 위해 오프셋 증가
     }
-        */
+        /*
     let bsnsYear = currentYear - Math.floor((currentQuarter - 1 + yearOffset) / 4);
     console.log("bsnsYear : ", bsnsYear)
     let quarter = (currentQuarter - 1 + yearOffset) % 4 + 1;
     console.log("quarter"+quarter);
     const response = await fetchFinancialIndicators(corpCode, bsnsYear, reprtCodeList[0], idxClCode);
+    */
     //console.log(response);
-    res.json(response);
+    //res.json(response);
 
 
 
@@ -285,6 +292,7 @@ app.get('/corp_code', async(req, res) => {
 function fetchFinancialIndicators(corpCode, bsnsYear, reprtCode, idxClCode) {
   return new Promise(async (resolve, reject) => {
 
+    const additionalApiUrl = `https://opendart.fss.or.kr/api/fnlttSinglAcnt.json?crtfc_key=${apiKey}&corp_code=${corpCode}&bsns_year=${bsnsYear}&reprt_code=${reprtCode}&idx_cl_code=${idxClCode}&fs_div=OFS`;
     
     try {
       // 추가 API에 요청
