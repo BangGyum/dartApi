@@ -239,20 +239,24 @@ app.get('/corp_code', async(req, res) => {
     const reprtCodeList = ['11013','11012','11014','11011']
     const idxClCode = 'M210000'
     
-    let yearOffset = 0; // 연도 오프셋 초기화
-    let fetchedQuarters = 0; // 가져온 분기 수 초기화
 
     //Error: socket hang up, 8번 호출하면 dart 사이트 자체가 다운됨
     //내일 다시 시도
 
+    let yearOffset = currentYear
+    let fetchedQuarters =  currentQuarter + 1 //for문 돌 분기
+    let count  =  10
     
-    while (fetchedQuarters < 3) {
-        let year = currentYear - Math.floor((currentQuarter - 1 + yearOffset) / 4);
-        let quarter = (currentQuarter - 1 + yearOffset) % 4 + 1;
+    while (count > 0 ) {
 
-        yearOffset++; // 다음 분기를 위해 오프셋 증가
-        fetchedQuarters++; // 가져온 분기 수 증가
-        console.log('currentQuarter : ', currentQuarter, '//year : ' , year ,'//quater : ',quarter)
+        console.log(`fetchedQuarters의 값은 ${fetchedQuarters}입니다.`);
+        fetchedQuarters--;
+        if (fetchedQuarters === 0) {
+          fetchedQuarters = 4;
+          yearOffset --;
+        }
+        count --;
+        console.log('fetchedQuarters : ', fetchedQuarters, '//yearOffset : ' , yearOffset, '//count : ', count)
     }
         //임시로 dataImsy 데이터를 가져와서 분석하는걸로 
         // 데이터 확인 및 가져오기
@@ -267,16 +271,12 @@ app.get('/corp_code', async(req, res) => {
         }
 
         yearOffset++; // 다음 분기를 위해 오프셋 증가
-    }
-        /*
-    let bsnsYear = currentYear - Math.floor((currentQuarter - 1 + yearOffset) / 4);
-    console.log("bsnsYear : ", bsnsYear)
-    let quarter = (currentQuarter - 1 + yearOffset) % 4 + 1;
-    console.log("quarter"+quarter);
-    const response = await fetchFinancialIndicators(corpCode, bsnsYear, reprtCodeList[0], idxClCode);
-    */
+    }*/
+
+    const response = await fetchFinancialIndicators(corpCode, yearOffset, reprtCodeList[0], idxClCode);
+    
     //console.log(response);
-    //res.json(response);
+    res.json(response);
 
 
 
