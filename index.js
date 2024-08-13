@@ -91,11 +91,6 @@ app.get('/zip', async (req, res) => {
       cachedData = xmlData; // XML 데이터를 메모리에 캐시
       console.log('XML 데이터가 메모리에 캐시되었습니다.');
 
-      // 캐시 확인 메시지 추가
-      if (cachedData) {
-          console.log('캐시된 데이터:', cachedData); // 캐시된 데이터 출력
-      }
-
       res.json(cachedData); // JSON 형식으로 응답
 
   } catch (error) {
@@ -244,7 +239,7 @@ app.get('/corp_code', async(req, res) => {
     //내일 다시 시도
 
     let yearOffset = currentYear
-    let fetchedQuarters =  currentQuarter + 1 //for문 돌 분기
+    let fetchedQuarters =  currentQuarter //for문 돌 분기
     let count  =  10
     
     while (count > 0 ) {
@@ -257,6 +252,18 @@ app.get('/corp_code', async(req, res) => {
         }
         count --;
         console.log('fetchedQuarters : ', fetchedQuarters, '//yearOffset : ' , yearOffset, '//count : ', count)
+
+        //const data = await fetchFinancialIndicators(corpCode, yearOffset, reprtCodeList[fetchedQuarters], idxClCode); -> { status: '013', message: '조회된 데이타가 없습니다.' }
+
+        const data = await fetchFinancialIndicators(corpCode, yearOffset, 11013, idxClCode);
+        console.log(data)
+        const targetItems = data.list.filter(item => item.account_nm === '영업이익' || item.account_nm === '당기순이익');
+        const result = {
+          operatingProfit: targetItems.find(item => item.account_nm === '영업이익')?.thstrm_amount,
+          netIncome: targetItems.find(item => item.account_nm === '당기순이익')?.thstrm_amount
+        };
+        console.log (result)
+        
     }
         //임시로 dataImsy 데이터를 가져와서 분석하는걸로 
         // 데이터 확인 및 가져오기
@@ -297,12 +304,10 @@ function fetchFinancialIndicators(corpCode, bsnsYear, reprtCode, idxClCode) {
     try {
       // 추가 API에 요청
       console.log('--------------------------------start api----------------------------')
-      console.log(API_URL, ' ++ 단일기업 재무제표 시작 ')
+      console.log(additionalApiUrl, ' ++ 단일기업 재무제표 시작 ')
       const response = await axios.get(additionalApiUrl);
-      console.log(API_URL, ' ++ 단일기업 재무제표 json 성공 ')
+      console.log(additionalApiUrl, ' ++ 단일기업 재무제표 json 성공 ')
 
-      console.log('additionalApiUrl: ',additionalApiUrl)
-      console.log(response.data.list)
       
       // 가져온 데이터로 해결
       resolve(response.data);
