@@ -237,32 +237,39 @@ app.get('/corp_code', async(req, res) => {
 
     //Error: socket hang up, 8번 호출하면 dart 사이트 자체가 다운됨
     //내일 다시 시도
-
+    let results = {}; // 결과를 저장할 객체 생성
     let yearOffset = currentYear
     let fetchedQuarters =  currentQuarter //for문 돌 분기
-    let count  =  10
+    let count  =  8
     
     while (count > 0 ) {
 
         console.log(`fetchedQuarters의 값은 ${fetchedQuarters}입니다.`);
         fetchedQuarters--;
-        if (fetchedQuarters === 0) {
-          fetchedQuarters = 4;
+        if (fetchedQuarters === -1) {
+          fetchedQuarters = 3;
           yearOffset --;
         }
-        count --;
+
         console.log('fetchedQuarters : ', fetchedQuarters, '//yearOffset : ' , yearOffset, '//count : ', count)
+
 
         //const data = await fetchFinancialIndicators(corpCode, yearOffset, reprtCodeList[fetchedQuarters], idxClCode); -> { status: '013', message: '조회된 데이타가 없습니다.' }
 
-        const data = await fetchFinancialIndicators(corpCode, yearOffset, 11013, idxClCode);
-        console.log(data)
+        const data = await fetchFinancialIndicators(corpCode, yearOffset,  reprtCodeList[fetchedQuarters], idxClCode);
+        if (data.status == '013'){
+          console.log('출력')
+          continue
+        }
         const targetItems = data.list.filter(item => item.account_nm === '영업이익' || item.account_nm === '당기순이익');
         const result = {
           operatingProfit: targetItems.find(item => item.account_nm === '영업이익')?.thstrm_amount,
           netIncome: targetItems.find(item => item.account_nm === '당기순이익')?.thstrm_amount
-        };
-        console.log (result)
+        }; 
+        
+        results[yearOffset] = results[yearOffset] || []; // yearOffset이 없는 경우 초기화
+        results[yearOffset].push(result); // 결과 추가
+        count --;
         
     }
         //임시로 dataImsy 데이터를 가져와서 분석하는걸로 
@@ -280,10 +287,10 @@ app.get('/corp_code', async(req, res) => {
         yearOffset++; // 다음 분기를 위해 오프셋 증가
     }*/
 
-    const response = await fetchFinancialIndicators(corpCode, yearOffset, reprtCodeList[0], idxClCode);
+    //const response = await fetchFinancialIndicators(corpCode, yearOffset, reprtCodeList[0], idxClCode);
     
     //console.log(response);
-    res.json(response);
+    res.json(results);
 
 
 
