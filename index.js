@@ -216,23 +216,9 @@ app.get('/corp_code', async(req, res) => {
     const singleResult = finalResults[0];
     const corpCode = singleResult.corp_code[0];
     
-    /*
-    _reprtCode , 보고서코드
-    1분기보고서 : 11013
-    반기보고서 : 11012
-    3분기보고서 : 11014
-    사업보고서 : 11011
-    ______
-    _idxClCode , 지표분류코드
-    수익성지표 : M210000 
-    안정성지표 : M220000 
-    성장성지표 : M230000 
-    활동성지표 : M240000
-    */
     //const bsnsYear = '2024' //사업연도
     const reprtCode = '11013'
-    const reprtCodeList = ['11013','11012','11014','11011']
-    const idxClCode = 'M210000'
+    const reprtCodeList = ['11013','11012','11014','11011'] //1분기,반기,3분기,사업 보고서
     
 
     //Error: socket hang up, 8번 호출하면 dart 사이트 자체가 다운됨
@@ -240,7 +226,7 @@ app.get('/corp_code', async(req, res) => {
     let results = {}; // 결과를 저장할 객체 생성
     let yearOffset = currentYear
     let fetchedQuarters =  currentQuarter //for문 돌 분기
-    let count  =  8
+    let count  =  15
     
     while (count > 0 ) {
 
@@ -256,57 +242,39 @@ app.get('/corp_code', async(req, res) => {
 
         //const data = await fetchFinancialIndicators(corpCode, yearOffset, reprtCodeList[fetchedQuarters], idxClCode); -> { status: '013', message: '조회된 데이타가 없습니다.' }
 
-        const data = await fetchFinancialIndicators(corpCode, yearOffset,  reprtCodeList[fetchedQuarters], idxClCode);
+        const data = await fetchFinancialIndicators(corpCode, yearOffset,  reprtCodeList[fetchedQuarters]);
         if (data.status == '013'){
           console.log('출력')
           continue
         }
         const targetItems = data.list.filter(item => item.account_nm === '영업이익' || item.account_nm === '당기순이익');
         const result = {
-          operatingProfit: targetItems.find(item => item.account_nm === '영업이익')?.thstrm_amount,
-          netIncome: targetItems.find(item => item.account_nm === '당기순이익')?.thstrm_amount
+          quater : fetchedQuarters+1,
+          // operatingProfit: targetItems.find(item => item.account_nm === '영업이익')?.thstrm_amount,
+          // netIncome: targetItems.find(item => item.account_nm === '당기순이익')?.thstrm_amount
+          operatingProfit: parseInt(targetItems.find(item => item.account_nm === '영업이익')?.thstrm_amount.replace(/,/g, ''), 10),
+          netIncome: parseInt(targetItems.find(item => item.account_nm === '당기순이익')?.thstrm_amount.replace(/,/g, ''), 10)
         }; 
         
         results[yearOffset] = results[yearOffset] || []; // yearOffset이 없는 경우 초기화
-        results[yearOffset].push(result); // 결과 추가
+        results[yearOffset].unshift(result); // 결과 추가
         count --;
         
     }
-        //임시로 dataImsy 데이터를 가져와서 분석하는걸로 
-        // 데이터 확인 및 가져오기
-        /*
-        const response = await fetchFinancialIndicators(corpCode, year, reprtCode, idxClCode);
 
-        //JSON 응답에서 데이터 확인
-        if (response && response.data && Array.isArray(response.data)) {
-            // 데이터가 존재하는 경우에만 추가
-            quartersList.push({ year, quarter });
-            fetchedQuarters++; // 가져온 분기 수 증가
-        }
+    calculateQoQ(results);
 
-        yearOffset++; // 다음 분기를 위해 오프셋 증가
-    }*/
-
-    //const response = await fetchFinancialIndicators(corpCode, yearOffset, reprtCodeList[0], idxClCode);
-    
-    //console.log(response);
     res.json(results);
 
-
-
-    // // 다른 함수로 호출 (예시로 다른 함수를 호출)
-    // fetchFinancialIndicators(corpCode, bsnsYear, reprtCode, idxClCode)
-    //     .then(data => res.json(data)) // 다른 함수에서 반환된 데이터를 클라이언트에 응답
-    //     .catch(err => res.status(500).send('서버 오류'));
   } else {
       res.status(404).send('해당 corp_name을 찾을 수 없습니다.');
   }
 });
 
-function fetchFinancialIndicators(corpCode, bsnsYear, reprtCode, idxClCode) {
+function fetchFinancialIndicators(corpCode, bsnsYear, reprtCode) { //&idx_cl_code=${idxClCode}
   return new Promise(async (resolve, reject) => {
 
-    const additionalApiUrl = `https://opendart.fss.or.kr/api/fnlttSinglAcnt.json?crtfc_key=${apiKey}&corp_code=${corpCode}&bsns_year=${bsnsYear}&reprt_code=${reprtCode}&idx_cl_code=${idxClCode}&fs_div=OFS`;
+    const additionalApiUrl = `https://opendart.fss.or.kr/api/fnlttSinglAcnt.json?crtfc_key=${apiKey}&corp_code=${corpCode}&bsns_year=${bsnsYear}&reprt_code=${reprtCode}&fs_div=OFS`;
     
     try {
       // 추가 API에 요청
@@ -326,12 +294,72 @@ function fetchFinancialIndicators(corpCode, bsnsYear, reprtCode, idxClCode) {
   });
 }
 
+// 상승률 계산 함수
+function calculateQoQ(data) {
+  for (const year in data) {
+      let previousOperatingProfit = null;
+      let previousNetIncome = null;
+
+      data[year].forEach(entry => {
+          // 문자열을 숫자로 변환 (쉼표 제거)
+          const operatingProfit = entry.operatingProfit;
+          const netIncome = entry.netIncome;
+          // const operatingProfit = parseInt(entry.operatingProfit.replace(/,/g, ''), 10);
+          // const netIncome = parseInt(entry.netIncome.replace(/,/g, ''), 10);
+
+          // 이전 분기와 비교하여 상승률 계산
+          if (previousOperatingProfit !== null) {
+              entry.operatingProfitQoQ = ((operatingProfit - previousOperatingProfit) / previousOperatingProfit * 100).toFixed(2);
+              entry.operatingProfitQoQ = entry.operatingProfitQoQ >= 0 ? `+${entry.operatingProfitQoQ}%` : `${entry.operatingProfitQoQ}%`
+          } else {
+              entry.operatingProfitQoQ = null; // 첫 번째 분기는 이전 데이터가 없으므로 null
+          }
+
+          if (previousNetIncome !== null) {
+              entry.netIncomeQoQ = ((netIncome - previousNetIncome) / previousNetIncome * 100).toFixed(2);
+              entry.netIncomeQoQ = entry.netIncomeQoQ >= 0 ? `+${entry.netIncomeQoQ}%` : `${entry.netIncomeQoQ}%`
+          } else {
+              entry.netIncomeQoQ = null; // 첫 번째 분기는 이전 데이터가 없으므로 null
+          }
+
+          // 이전 값 저장
+          previousOperatingProfit = operatingProfit;
+          previousNetIncome = netIncome;
+      });
+  }
+}
+
 app.listen(port, () => {
   console.log(`서버가 http://localhost:${port}에서 실행 중입  니다.`);
 });
 
 
+        //임시로 dataImsy 데이터를 가져와서 분석하는걸로 
+        // 데이터 확인 및 가져오기
+        /*
+        const response = await fetchFinancialIndicators(corpCode, year, reprtCode, idxClCode);
 
+        //JSON 응답에서 데이터 확인
+        if (response && response.data && Array.isArray(response.data)) {
+            // 데이터가 존재하는 경우에만 추가
+            quartersList.push({ year, quarter });
+            fetchedQuarters++; // 가져온 분기 수 증가
+        }
+
+        yearOffset++; // 다음 분기를 위해 오프셋 증가
+    }*/
+
+    //const response = await fetchFinancialIndicators(corpCode, yearOffset, reprtCodeList[0], idxClCode);
+    
+    //console.log(response);
+
+    
+
+
+    // // 다른 함수로 호출 (예시로 다른 함수를 호출)
+    // fetchFinancialIndicators(corpCode, bsnsYear, reprtCode, idxClCode)
+    //     .then(data => res.json(data)) // 다른 함수에서 반환된 데이터를 클라이언트에 응답
+    //     .catch(err => res.status(500).send('서버 오류'));
 
 // const dataImsy = {
 //   "status": "000",
