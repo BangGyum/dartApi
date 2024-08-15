@@ -296,16 +296,28 @@ function fetchFinancialIndicators(corpCode, bsnsYear, reprtCode) { //&idx_cl_cod
 
 // 상승률 계산 함수
 function calculateQoQ(data) {
+  
+  let previousOperatingProfit = null;
+  let previousNetIncome = null;
   for (const year in data) {
-      let previousOperatingProfit = null;
-      let previousNetIncome = null;
+      
 
-      data[year].forEach(entry => {
+      data[year].forEach((entry, index) => {
           // 문자열을 숫자로 변환 (쉼표 제거)
           const operatingProfit = entry.operatingProfit;
           const netIncome = entry.netIncome;
           // const operatingProfit = parseInt(entry.operatingProfit.replace(/,/g, ''), 10);
           // const netIncome = parseInt(entry.netIncome.replace(/,/g, ''), 10);
+
+          //1분기이면 전연도 4분기 참고
+          if (index === 0) {
+            const previousYear = parseInt(year) - 1;
+            if (data[previousYear] && data[previousYear].length > 0) {
+              const lastQuarterIndex = data[previousYear].length - 1; // 이전 연도의 4분기
+              previousOperatingProfit =data[previousYear][lastQuarterIndex].operatingProfit;
+              previousNetIncome =data[previousYear][lastQuarterIndex].netIncome;
+            }
+          }
 
           // 이전 분기와 비교하여 상승률 계산
           if (previousOperatingProfit !== null) {
