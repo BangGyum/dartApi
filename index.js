@@ -166,6 +166,7 @@ app.get('/api', (req,res) => {
 
 //2분기는 1분기 빼야함. 그럼 지금이랑 반대로 먼저 구해야하는데...?????????????/??????????????
 //나중에 수작업으로 그냥 빼기??? 고민.
+//아니네, 사업보고서만 빼면 됨
 // corp_code로 corp_name 검색 (쿼리 파라미터 사용)
 app.get('/corp_name', (req, res) => {
   const corpCode = req.query.corp_code; // 쿼리 파라미터에서 corp_code 가져오기
@@ -217,14 +218,8 @@ app.get('/corp_code', async(req, res) => {
     // 하나의 결과가 있을 경우
     const singleResult = finalResults[0];
     const corpCode = singleResult.corp_code[0];
-    
-    //const bsnsYear = '2024' //사업연도
-    const reprtCode = '11013'
     const reprtCodeList = ['11013','11012','11014','11011'] //1분기,반기,3분기,사업 보고서
     
-
-    //Error: socket hang up, 8번 호출하면 dart 사이트 자체가 다운됨
-    //내일 다시 시도
     let results = {}; // 결과를 저장할 객체 생성
     let yearOffset = currentYear
     let fetchedQuarters =  currentQuarter //for문 돌 분기
@@ -232,17 +227,11 @@ app.get('/corp_code', async(req, res) => {
     
     while (count > 0 ) {
 
-        console.log(`fetchedQuarters의 값은 ${fetchedQuarters}입니다.`);
         fetchedQuarters--;
         if (fetchedQuarters === -1) {
           fetchedQuarters = 3;
           yearOffset --;
         }
-
-        console.log('fetchedQuarters : ', fetchedQuarters, '//yearOffset : ' , yearOffset, '//count : ', count)
-
-
-        //const data = await fetchFinancialIndicators(corpCode, yearOffset, reprtCodeList[fetchedQuarters], idxClCode); -> { status: '013', message: '조회된 데이타가 없습니다.' }
 
         const data = await fetchFinancialIndicators(corpCode, yearOffset,  reprtCodeList[fetchedQuarters]);
         if (data.status == '013'){
@@ -298,18 +287,37 @@ function fetchFinancialIndicators(corpCode, bsnsYear, reprtCode) { //&idx_cl_cod
 
 // 상승률 계산 함수
 function calculateQoQ(data) {
+
+  let totalOperatingProfitQoQ = 0;
+  let totalNetIncomeQoQ = 0;
+  let countOperatingProfit = 0;
+  let countNetIncome = 0;
   
   let previousOperatingProfit = null;
   let previousNetIncome = null;
   for (const year in data) {
-      
+      let yearAddOperatingProfit = 0 
+      let yearAddNetIncome = 0
 
       data[year].forEach((entry, index) => {
           // 문자열을 숫자로 변환 (쉼표 제거)
-          const operatingProfit = entry.operatingProfit;
-          const netIncome = entry.netIncome;
-          // const operatingProfit = parseInt(entry.operatingProfit.replace(/,/g, ''), 10);
-          // const netIncome = parseInt(entry.netIncome.replace(/,/g, ''), 10);
+          console.log(entry.quater)
+
+          let operatingProfit = entry.operatingProfit
+          let netIncome = entry.netIncome
+
+          if (entry.quater === 4) { //4분기면 1~3분기 순이익 빼줘야함, 그리고 원래 데이터 수정
+            operatingProfit = operatingProfit - yearAddOperatingProfit
+            netIncome = netIncome - yearAddNetIncome
+          }else { //아니면 더하기
+            yearAddOperatingProfit += entry.operatingProfit
+            yearAddNetIncome += entry.netIncome
+          }
+          entry.operatingProfit = operatingProfit
+          entry.netIncome = netIncome
+
+          console.log("operatingProfit : " + operatingProfit)
+          console.log("netIncome : " + netIncome)
 
           //1분기이면 전연도 4분기 참고
           if (index === 0) {
@@ -339,8 +347,29 @@ function calculateQoQ(data) {
           // 이전 값 저장
           previousOperatingProfit = operatingProfit;
           previousNetIncome = netIncome;
+
+          //----------- 평균 계산
+          // operatingProfitQoQ 계산
+          if (entry.operatingProfitQoQ) {
+            const growthRate = parseFloat(entry.operatingProfitQoQ.replace('%', ''));
+            totalOperatingProfitQoQ += growthRate;
+            countOperatingProfit++;
+        }
+        // netIncomeQoQ 계산
+        if (entry.netIncomeQoQ) {
+            const netIncomeGrowthRate = parseFloat(entry.netIncomeQoQ.replace('%', ''));
+            totalNetIncomeQoQ += netIncomeGrowthRate;
+            countNetIncome++;
+        }
       });
   }
+  // 평균 계산
+  const averageOperatingProfitQoQ = totalOperatingProfitQoQ / countOperatingProfit;
+  const averageNetIncomeQoQ = totalNetIncomeQoQ / countNetIncome;
+  
+// 평균을 data 객체에 추가
+data.averageOperatingProfitQoQ = averageOperatingProfitQoQ.toFixed(2) + '%';
+data.averageNetIncomeQoQ = averageNetIncomeQoQ.toFixed(2) + '%';
 }
 
 app.listen(port, () => {
