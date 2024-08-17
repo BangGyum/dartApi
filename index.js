@@ -232,7 +232,7 @@ app.get('/corp_code', async(req, res) => {
           fetchedQuarters = 3;
           yearOffset --;
         }
-
+이거 function 안으로? 
         const data = await fetchFinancialIndicators(corpCode, yearOffset,  reprtCodeList[fetchedQuarters]);
         if (data.status == '013'){
           console.log('출력')
@@ -243,8 +243,8 @@ app.get('/corp_code', async(req, res) => {
           quater : fetchedQuarters+1,
           // operatingProfit: targetItems.find(item => item.account_nm === '영업이익')?.thstrm_amount,
           // netIncome: targetItems.find(item => item.account_nm === '당기순이익')?.thstrm_amount
-          operatingProfit: parseInt(targetItems.find(item => item.account_nm === '영업이익')?.thstrm_amount.replace(/,/g, ''), 10),
-          netIncome: parseInt(targetItems.find(item => item.account_nm === '당기순이익')?.thstrm_amount.replace(/,/g, ''), 10)
+          operatingProfit: parseInt(targetItems.find(item => item.account_nm === '영업이익(손실)')?.thstrm_amount.replace(/,/g, ''), 10),
+          netIncome: parseInt(targetItems.find(item => item.account_nm === '당기순이익(손실)')?.thstrm_amount.replace(/,/g, ''), 10)
         }; 
         
         results[yearOffset] = results[yearOffset] || []; // yearOffset이 없는 경우 초기화
@@ -265,7 +265,8 @@ app.get('/corp_code', async(req, res) => {
 function fetchFinancialIndicators(corpCode, bsnsYear, reprtCode) { //&idx_cl_code=${idxClCode}
   return new Promise(async (resolve, reject) => {
 
-    const additionalApiUrl = `https://opendart.fss.or.kr/api/fnlttSinglAcnt.json?crtfc_key=${apiKey}&corp_code=${corpCode}&bsns_year=${bsnsYear}&reprt_code=${reprtCode}&fs_div=OFS`;
+    //CFS=연결, OFS=비연결
+    const additionalApiUrl = `https://opendart.fss.or.kr/api/fnlttSinglAcnt.json?crtfc_key=${apiKey}&corp_code=${corpCode}&bsns_year=${bsnsYear}&reprt_code=${reprtCode}&fs_div=CFS`;
     
     try {
       // 추가 API에 요청
