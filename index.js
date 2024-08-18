@@ -232,23 +232,22 @@ app.get('/corp_code', async(req, res) => {
           fetchedQuarters = 3;
           yearOffset --;
         }
-이거 function 안으로? 
-        const data = await fetchFinancialIndicators(corpCode, yearOffset,  reprtCodeList[fetchedQuarters]);
-        if (data.status == '013'){
-          console.log('출력')
+        const data = await fetchFinancialIndicators(corpCode, yearOffset,  reprtCodeList[fetchedQuarters], fetchedQuarters);
+        if (data == 1){
+          console.log('1')
           continue
         }
-        const targetItems = data.list.filter(item => item.account_nm === '영업이익' || item.account_nm === '당기순이익');
-        const result = {
-          quater : fetchedQuarters+1,
-          // operatingProfit: targetItems.find(item => item.account_nm === '영업이익')?.thstrm_amount,
-          // netIncome: targetItems.find(item => item.account_nm === '당기순이익')?.thstrm_amount
-          operatingProfit: parseInt(targetItems.find(item => item.account_nm === '영업이익(손실)')?.thstrm_amount.replace(/,/g, ''), 10),
-          netIncome: parseInt(targetItems.find(item => item.account_nm === '당기순이익(손실)')?.thstrm_amount.replace(/,/g, ''), 10)
-        }; 
+        //const targetItems = data.list.filter(item => item.account_nm === '영업이익' || item.account_nm === '당기순이익');
+        // const result = {
+        //   quater : fetchedQuarters+1,
+        //   // operatingProfit: targetItems.find(item => item.account_nm === '영업이익')?.thstrm_amount,
+        //   // netIncome: targetItems.find(item => item.account_nm === '당기순이익')?.thstrm_amount
+        //   operatingProfit: parseInt(targetItems.find(item => item.account_nm === '영업이익(손실)')?.thstrm_amount.replace(/,/g, ''), 10),
+        //   netIncome: parseInt(targetItems.find(item => item.account_nm === '당기순이익(손실)')?.thstrm_amount.replace(/,/g, ''), 10)
+        // }; 
         
         results[yearOffset] = results[yearOffset] || []; // yearOffset이 없는 경우 초기화
-        results[yearOffset].unshift(result); // 결과 추가
+        results[yearOffset].unshift(data); // 결과 추가
         count --;
         
     }
@@ -259,10 +258,11 @@ app.get('/corp_code', async(req, res) => {
 
   } else {
       res.status(404).send('해당 corp_name을 찾을 수 없습니다.');
-  }
+  } 
 });
 
-function fetchFinancialIndicators(corpCode, bsnsYear, reprtCode) { //&idx_cl_code=${idxClCode}
+//무조건 1분기 데이터부터 긁긴 해야할 것 같은데. 상승률때문에
+function fetchFinancialIndicators(corpCode, bsnsYear, reprtCode, fetchedQuarters) { //&idx_cl_code=${idxClCode}
   return new Promise(async (resolve, reject) => {
 
     //CFS=연결, OFS=비연결
@@ -272,12 +272,42 @@ function fetchFinancialIndicators(corpCode, bsnsYear, reprtCode) { //&idx_cl_cod
       // 추가 API에 요청
       console.log('--------------------------------start api----------------------------')
       console.log(additionalApiUrl, ' ++ 단일기업 재무제표 시작 ')
-      const response = await axios.get(additionalApiUrl);
+      const stockQuarterData = await axios.get(additionalApiUrl);
       console.log(additionalApiUrl, ' ++ 단일기업 재무제표 json 성공 ')
 
-      
+      if (stockQuarterData.data.status == '013'){
+        console.log('출력')
+        return resolve(1);
+      }
+      console.log(stockQuarterData.data)
+
+      // // account_id 필터링, account_id가 오지 않음. postman에서는 오는데 왜?
+      // const targetItems = stockQuarterData.data.list.filter(item => 
+      //   item.account_id === 'ifrs-full_Revenue' ||  //매출액
+      //   item.account_id === 'dart_OperatingIncomeLoss' || //영업이익
+      //   item.account_id === 'ifrs-full_ProfitLoss' //당기순이익
+      // );
+
+      // account_nm 필터링
+      const targetItems = stockQuarterData.data.list.filter(item => 
+        item.account_nm === '매출액' ||  //매출액
+        item.account_nm === '영업이익' || //영업이익
+        item.account_nm === '당기순이익' //당기순이익 , 포괄손익계산서와 그냥 손익계산서가 존재 .
+      );
+
+      const result = {
+        quater : fetchedQuarters+1,
+        revenue : parseInt(targetItems.find(item => item.account_nm === '매출액')?.thstrm_amount.replace(/,/g, ''), 10),
+        // operatingProfit: targetItems.find(item => item.account_nm === '영업이익')?.thstrm_amount,
+        // netIncome: targetItems.find(item => item.account_nm === '당기순이익')?.thstrm_amount
+        operatingProfit: parseInt(targetItems.find(item => item.account_nm === '영업이익')?.thstrm_amount.replace(/,/g, ''), 10),
+        netIncome: parseInt(targetItems.find(item => item.account_nm === '당기순이익')?.thstrm_amount.replace(/,/g, ''), 10)
+      }; 
+      console.log(fetchedQuarters)
+      console.log(result)
+
       // 가져온 데이터로 해결
-      resolve(response.data);
+      resolve(result);
     } catch (error) {
       // 오류 처리 및 프로미스 거부
       console.error('추가 API에서 데이터 가져오기 실패:', error);
@@ -289,88 +319,110 @@ function fetchFinancialIndicators(corpCode, bsnsYear, reprtCode) { //&idx_cl_cod
 // 상승률 계산 함수
 function calculateQoQ(data) {
 
-  let totalOperatingProfitQoQ = 0;
-  let totalNetIncomeQoQ = 0;
-  let countOperatingProfit = 0;
+  let totalOperatingProfitQoQ = 0; // 영업이익 상승률 변수
+  let totalNetIncomeQoQ = 0; // 영업이익 상승률 변수
+  let totalRevenueQoQ = 0; // 매출액 상승률 변수
+  let countOperatingProfit = 0; // 영업이익 카운트 변수
   let countNetIncome = 0;
+  let countRevenue = 0; // 매출액 카운트 변수
   
   let previousOperatingProfit = null;
   let previousNetIncome = null;
+  let previousRevenue = null;
+
   for (const year in data) {
-      let yearAddOperatingProfit = 0 
-      let yearAddNetIncome = 0
+    let yearAddOperatingProfit = 0  //연도별 누적 변수
+    let yearAddNetIncome = 0
+    let yearAddRevenue = 0;
 
-      data[year].forEach((entry, index) => {
-          // 문자열을 숫자로 변환 (쉼표 제거)
-          console.log(entry.quater)
+    data[year].forEach((entry, index) => {
+      // 문자열을 숫자로 변환 (쉼표 제거)
+      console.log(entry.quater)
 
-          let operatingProfit = entry.operatingProfit
-          let netIncome = entry.netIncome
+      let operatingProfit = entry.operatingProfit
+      let netIncome = entry.netIncome
+      let revenue = entry.revenue;
 
-          if (entry.quater === 4) { //4분기면 1~3분기 순이익 빼줘야함, 그리고 원래 데이터 수정
-            operatingProfit = operatingProfit - yearAddOperatingProfit
-            netIncome = netIncome - yearAddNetIncome
-          }else { //아니면 더하기
-            yearAddOperatingProfit += entry.operatingProfit
-            yearAddNetIncome += entry.netIncome
-          }
-          entry.operatingProfit = operatingProfit
-          entry.netIncome = netIncome
+      if (entry.quater === 4) { //4분기면 1~3분기 순이익 빼줘야함, 그리고 원래 데이터 수정
+        operatingProfit = operatingProfit - yearAddOperatingProfit
+        netIncome = netIncome - yearAddNetIncome
+        revenue = revenue - yearAddRevenue;
+      }else { //아니면 더하기
+        yearAddOperatingProfit += entry.operatingProfit
+        yearAddNetIncome += entry.netIncome
+        yearAddRevenue += entry.revenue;
+      }
+      entry.operatingProfit = operatingProfit
+      entry.netIncome = netIncome
+      entry.revenue = revenue;
 
-          console.log("operatingProfit : " + operatingProfit)
-          console.log("netIncome : " + netIncome)
+      console.log("operatingProfit : " + operatingProfit)
+      console.log("netIncome : " + netIncome)
+      console.log("revenue : " + revenue);
 
-          //1분기이면 전연도 4분기 참고
-          if (index === 0) {
-            const previousYear = parseInt(year) - 1;
-            if (data[previousYear] && data[previousYear].length > 0) {
-              const lastQuarterIndex = data[previousYear].length - 1; // 이전 연도의 4분기
-              previousOperatingProfit =data[previousYear][lastQuarterIndex].operatingProfit;
-              previousNetIncome =data[previousYear][lastQuarterIndex].netIncome;
-            }
-          }
-
-          // 이전 분기와 비교하여 상승률 계산
-          if (previousOperatingProfit !== null) {
-              entry.operatingProfitQoQ = ((operatingProfit - previousOperatingProfit) / previousOperatingProfit * 100).toFixed(2);
-              entry.operatingProfitQoQ = entry.operatingProfitQoQ >= 0 ? `+${entry.operatingProfitQoQ}%` : `${entry.operatingProfitQoQ}%`
-          } else {
-              entry.operatingProfitQoQ = null; // 첫 번째 분기는 이전 데이터가 없으므로 null
-          }
-
-          if (previousNetIncome !== null) {
-              entry.netIncomeQoQ = ((netIncome - previousNetIncome) / previousNetIncome * 100).toFixed(2);
-              entry.netIncomeQoQ = entry.netIncomeQoQ >= 0 ? `+${entry.netIncomeQoQ}%` : `${entry.netIncomeQoQ}%`
-          } else {
-              entry.netIncomeQoQ = null; // 첫 번째 분기는 이전 데이터가 없으므로 null
-          }
-
-          // 이전 값 저장
-          previousOperatingProfit = operatingProfit;
-          previousNetIncome = netIncome;
-
-          //----------- 평균 계산
-          // operatingProfitQoQ 계산
-          if (entry.operatingProfitQoQ) {
-            const growthRate = parseFloat(entry.operatingProfitQoQ.replace('%', ''));
-            totalOperatingProfitQoQ += growthRate;
-            countOperatingProfit++;
+      //1분기이면 전연도 4분기 참고
+      if (index === 0) {
+        const previousYear = parseInt(year) - 1;
+        if (data[previousYear] && data[previousYear].length > 0) {
+          const lastQuarterIndex = data[previousYear].length - 1; // 이전 연도의 4분기
+          previousOperatingProfit =data[previousYear][lastQuarterIndex].operatingProfit;
+          previousNetIncome =data[previousYear][lastQuarterIndex].netIncome;
+          previousRevenue = data[previousYear][lastQuarterIndex].revenue;
         }
-        // netIncomeQoQ 계산
-        if (entry.netIncomeQoQ) {
-            const netIncomeGrowthRate = parseFloat(entry.netIncomeQoQ.replace('%', ''));
-            totalNetIncomeQoQ += netIncomeGrowthRate;
-            countNetIncome++;
-        }
-      });
+      }
+
+      // 이전 분기와 비교하여 상승률 계산
+      if (previousOperatingProfit !== null) {
+          entry.operatingProfitQoQ = ((operatingProfit - previousOperatingProfit) / previousOperatingProfit * 100).toFixed(2);
+          entry.operatingProfitQoQ = entry.operatingProfitQoQ >= 0 ? `+${entry.operatingProfitQoQ}%` : `${entry.operatingProfitQoQ}%`
+      } else {
+          entry.operatingProfitQoQ = null; // 첫 번째 분기는 이전 데이터가 없으므로 null
+      }
+
+      if (previousNetIncome !== null) {
+          entry.netIncomeQoQ = ((netIncome - previousNetIncome) / previousNetIncome * 100).toFixed(2);
+          entry.netIncomeQoQ = entry.netIncomeQoQ >= 0 ? `+${entry.netIncomeQoQ}%` : `${entry.netIncomeQoQ}%`
+      } else {
+          entry.netIncomeQoQ = null; // 첫 번째 분기는 이전 데이터가 없으므로 null
+      }
+
+      if (previousRevenue !== null) {
+        entry.revenueQoQ = ((revenue - previousRevenue) / previousRevenue * 100).toFixed(2);
+        entry.revenueQoQ = entry.revenueQoQ >= 0 ? `+${entry.revenueQoQ}%` : `${entry.revenueQoQ}%`;
+      } else {
+        entry.revenueQoQ = null; // 첫 번째 분기는 이전 데이터가 없으므로 null
+      }
+
+      // 이전 값 저장
+      previousOperatingProfit = operatingProfit;
+      previousNetIncome = netIncome;
+      previousRevenue = revenue;
+
+      //----------- 평균 계산
+      // operatingProfitQoQ 계산
+      if (entry.operatingProfitQoQ) {
+        const growthRate = parseFloat(entry.operatingProfitQoQ.replace('%', ''));
+        totalOperatingProfitQoQ += growthRate;
+        countOperatingProfit++;
+      }
+      // netIncomeQoQ 계산
+      if (entry.netIncomeQoQ) {
+          const netIncomeGrowthRate = parseFloat(entry.netIncomeQoQ.replace('%', ''));
+          totalNetIncomeQoQ += netIncomeGrowthRate;
+          countNetIncome++;
+      }
+      // revenueQoQ 계산
+      if (entry.revenueQoQ) {
+        const revenueGrowthRate = parseFloat(entry.revenueQoQ.replace('%', ''));
+        totalRevenueQoQ += revenueGrowthRate;
+        countRevenue++;
+      }
+    });
   }
-  // 평균 계산
-  const averageOperatingProfitQoQ = totalOperatingProfitQoQ / countOperatingProfit;
-  const averageNetIncomeQoQ = totalNetIncomeQoQ / countNetIncome;
-  
-// 평균을 data 객체에 추가
-data.averageOperatingProfitQoQ = averageOperatingProfitQoQ.toFixed(2) + '%';
-data.averageNetIncomeQoQ = averageNetIncomeQoQ.toFixed(2) + '%';
+  // 평균을 data 객체에 추가
+  data.averageOperatingProfitQoQ = (totalOperatingProfitQoQ / countOperatingProfit).toFixed(2) + '%';
+  data.averageNetIncomeQoQ = (totalNetIncomeQoQ / countNetIncome).toFixed(2) + '%';
+  data.averageRevenueQoQ = (totalRevenueQoQ / countRevenue).toFixed(2)+ '%';
 }
 
 app.listen(port, () => {
