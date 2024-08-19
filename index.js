@@ -185,6 +185,12 @@ app.get('/corp_name', (req, res) => {
 // corp_name 하나를 받아서 그걸로 검색
 // 검색한 값이 하나인 경우 해당 기업의 정보를 가져올 거임. -> 캐시된 데이터에서 찾을 것.
 // 기업의 정보를 가져올텐데. 
+// 이거를 이제 어떻게 요청을 받을지.
+
+// 1. 먼저 3년간인 걸로 (4x3  = 12번 돌기)
+// ㄴ 위의 문제는 맨 앞이 4분기면, 4분기는 사업보고서라 전체라서, 그냥 무조건 1분기부터 돌려야하나
+// 사업보고서에는 전년도 수치도 같이 들어옴
+// yoy 상승률도 구하자.
 app.get('/corp_code', async(req, res) => {
   const corpName = req.query.corp_name; // 쿼리 파라미터에서 corp_name 가져오기
   if (!cachedData || cachedData.length === 0) {
