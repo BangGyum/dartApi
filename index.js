@@ -183,15 +183,8 @@ app.get('/corp_name', (req, res) => {
 });
 
 // corp_name 하나를 받아서 그걸로 검색
-// 검색한 값이 하나인 경우 해당 기업의 정보를 가져올 거임. -> 캐시된 데이터에서 찾을 것.
-// 기업의 정보를 가져올텐데. 
-// 이거를 이제 어떻게 요청을 받을지.
-
-// 1. 먼저 3년간인 걸로 (4x3  = 12번 돌기)
-// ㄴ 위의 문제는 맨 앞이 4분기면, 4분기는 사업보고서라 전체라서, 그냥 무조건 1분기부터 돌려야하나
-// 사업보고서에는 전년도 수치도 같이 들어옴
-// yoy 상승률도 구하자.
-app.get('/corp_code', async(req, res) => {
+// 최근 3년 분기실적
+app.get('/corp_code/quater', async(req, res) => {
   const corpName = req.query.corp_name; // 쿼리 파라미터에서 corp_name 가져오기
   if (!cachedData || cachedData.length === 0) {
       return res.status(500).send('캐시된 데이터가 없습니다.');
@@ -229,7 +222,7 @@ app.get('/corp_code', async(req, res) => {
     let results = {}; // 결과를 저장할 객체 생성
     let yearOffset = currentYear
     let fetchedQuarters =  currentQuarter //for문 돌 분기
-    let count  =  15
+    let count  =  12 //최근 12분기
     
     while (count > 0 ) {
 
@@ -238,20 +231,76 @@ app.get('/corp_code', async(req, res) => {
           fetchedQuarters = 3;
           yearOffset --;
         }
-        const data = await fetchFinancialIndicators(corpCode, yearOffset,  reprtCodeList[fetchedQuarters], fetchedQuarters);
+        const data = await fetchFinancialIndicators(corpCode, yearOffset,  reprtCodeList[fetchedQuarters]);
         if (data == 1){
           console.log('1')
           continue
         }
-        //const targetItems = data.list.filter(item => item.account_nm === '영업이익' || item.account_nm === '당기순이익');
-        // const result = {
-        //   quater : fetchedQuarters+1,
-        //   // operatingProfit: targetItems.find(item => item.account_nm === '영업이익')?.thstrm_amount,
-        //   // netIncome: targetItems.find(item => item.account_nm === '당기순이익')?.thstrm_amount
-        //   operatingProfit: parseInt(targetItems.find(item => item.account_nm === '영업이익(손실)')?.thstrm_amount.replace(/,/g, ''), 10),
-        //   netIncome: parseInt(targetItems.find(item => item.account_nm === '당기순이익(손실)')?.thstrm_amount.replace(/,/g, ''), 10)
-        // }; 
+
+        results[yearOffset] = results[yearOffset] || []; // yearOffset이 없는 경우 초기화
+        results[yearOffset].unshift(data); // 결과 추가
+        count --;
         
+    }
+
+    calculateQoQ(results);
+
+    res.json(results);
+
+  } else {
+      res.status(404).send('해당 corp_name을 찾을 수 없습니다.');
+  } 
+});
+
+// corp_name 하나를 받아서 그걸로 검색
+// 최근 3년 연실적
+app.get('/corp_code/year', async(req, res) => {
+  const corpName = req.query.corp_name; // 쿼리 파라미터에서 corp_name 가져오기
+  if (!cachedData || cachedData.length === 0) {
+      return res.status(500).send('캐시된 데이터가 없습니다.');
+  }
+
+  // 부분 문자열 일치를 위해 filter 사용
+  const results = cachedData.filter(item => 
+      item.corp_name[0].includes(corpName) // corp_name의 첫 번째 요소에서 부분 문자열 검색
+  );
+
+  // 동일한 corp_name을 가진 항목들 중 최신 modify_date 찾기
+  const uniqueResults = {};
+  results.forEach(item => {
+      const name = item.corp_name[0];
+      if (!uniqueResults[name] || uniqueResults[name].modify_date[0] < item.modify_date[0]) {
+          uniqueResults[name] = item; // 최신 항목으로 업데이트
+      }
+  });
+  
+   // uniqueResults 객체를 배열로 변환
+  const finalResults = Object.values(uniqueResults);
+
+  if (finalResults.length > 1) {// 여러 결과가 있을 경우, 그저 목록 반환
+      const response = finalResults.map(item => ({
+          corp_code: item.corp_code[0],
+          corp_name: item.corp_name[0]
+      }));
+      res.json(response);
+  } else if (finalResults.length === 1) {
+    // 하나의 결과가 있을 경우
+    const singleResult = finalResults[0];
+    const corpCode = singleResult.corp_code[0];
+    const reprtCode = '11011' //사업보고서
+    
+    let results = {}; // 결과를 저장할 객체 생성
+    let yearOffset = currentYear
+    let count  =  3 //최근 3년
+    
+    while (count > 0 ) {
+
+        const data = await fetchFinancialIndicators(corpCode, yearOffset,  reprtCode);
+        if (data == 1){
+          console.log('1')
+          continue
+        }
+
         results[yearOffset] = results[yearOffset] || []; // yearOffset이 없는 경우 초기화
         results[yearOffset].unshift(data); // 결과 추가
         count --;
@@ -268,7 +317,7 @@ app.get('/corp_code', async(req, res) => {
 });
 
 //무조건 1분기 데이터부터 긁긴 해야할 것 같은데. 상승률때문에
-function fetchFinancialIndicators(corpCode, bsnsYear, reprtCode, fetchedQuarters) { //&idx_cl_code=${idxClCode}
+function fetchFinancialIndicators(corpCode, bsnsYear, reprtCode) { //&idx_cl_code=${idxClCode}
   return new Promise(async (resolve, reject) => {
 
     //CFS=연결, OFS=비연결
