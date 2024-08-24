@@ -231,7 +231,7 @@ app.get('/corp_code/quater', async(req, res) => {
           fetchedQuarters = 3;
           yearOffset --;
         }
-        const data = await fetchFinancialIndicators(corpCode, yearOffset,  reprtCodeList[fetchedQuarters]);
+        const data = await fetchFinancialIndicators(corpCode, yearOffset,  reprtCodeList[fetchedQuarters], fetchedQuarters);
         if (data == 1){
           console.log('1')
           continue
@@ -252,8 +252,8 @@ app.get('/corp_code/quater', async(req, res) => {
   } 
 });
 
-// corp_name 하나를 받아서 그걸로 검색
-// 최근 3년 연실적
+// corp_name  받아서 그걸로 검색
+// years_count 최근 몇년간
 app.get('/corp_code/year', async(req, res) => {
   const corpName = req.query.corp_name; // 쿼리 파라미터에서 corp_name 가져오기
   if (!cachedData || cachedData.length === 0) {
@@ -291,23 +291,24 @@ app.get('/corp_code/year', async(req, res) => {
     
     let results = {}; // 결과를 저장할 객체 생성
     let yearOffset = currentYear
-    let count  =  3 //최근 3년
+    let count  =  0 
+    while (count < req.query.years_count ) {//최근 3년
     
-    while (count > 0 ) {
-
-        const data = await fetchFinancialIndicators(corpCode, yearOffset,  reprtCode);
+        const data = await fetchFinancialIndicators(corpCode, yearOffset,  reprtCode, 0);
         if (data == 1){
           console.log('1')
+          yearOffset --;
           continue
         }
 
         results[yearOffset] = results[yearOffset] || []; // yearOffset이 없는 경우 초기화
         results[yearOffset].unshift(data); // 결과 추가
-        count --;
+        yearOffset --;
+        count ++;
         
     }
 
-    calculateQoQ(results);
+    calculateYoY(results);
 
     res.json(results);
 
@@ -317,7 +318,7 @@ app.get('/corp_code/year', async(req, res) => {
 });
 
 //무조건 1분기 데이터부터 긁긴 해야할 것 같은데. 상승률때문에
-function fetchFinancialIndicators(corpCode, bsnsYear, reprtCode) { //&idx_cl_code=${idxClCode}
+function fetchFinancialIndicators(corpCode, bsnsYear, reprtCode, fetchedQuarters) { //&idx_cl_code=${idxClCode}
   return new Promise(async (resolve, reject) => {
 
     //CFS=연결, OFS=비연결
@@ -478,6 +479,74 @@ function calculateQoQ(data) {
   data.averageOperatingProfitQoQ = (totalOperatingProfitQoQ / countOperatingProfit).toFixed(2) + '%';
   data.averageNetIncomeQoQ = (totalNetIncomeQoQ / countNetIncome).toFixed(2) + '%';
   data.averageRevenueQoQ = (totalRevenueQoQ / countRevenue).toFixed(2)+ '%';
+}
+
+// 상승률 계산 함수 (YOY 버전)
+function calculateYoY(data) {
+  let totalOperatingProfitYoY = 0; // 영업이익 상승률 변수
+  let totalNetIncomeYoY = 0; // 순이익 상승률 변수
+  let totalRevenueYoY = 0; // 매출액 상승률 변수
+  let countOperatingProfit = 0; // 영업이익 카운트 변수
+  let countNetIncome = 0; // 순이익 카운트 변수
+  let countRevenue = 0; // 매출액 카운트 변수
+  
+  for (const year in data) {
+    const currentYearData = data[year];
+
+    // 연도별 이전 연도 데이터 참조
+    const previousYear = parseInt(year) - 1;
+    const previousYearData = data[previousYear] || [];
+
+    currentYearData.forEach((entry, index) => {
+      // 현재 데이터의 영업이익, 순이익, 매출액
+      const operatingProfit = entry.operatingProfit;
+      const netIncome = entry.netIncome;
+      const revenue = entry.revenue;
+
+      // 같은 분기의 이전 연도 데이터 찾기
+      if (previousYearData.length > index) {
+        const previousEntry = previousYearData[index];
+
+        // YOY 상승률 계산
+        if (previousEntry.operatingProfit !== 0) {
+          entry.operatingProfitYoY = ((operatingProfit - previousEntry.operatingProfit) / previousEntry.operatingProfit * 100).toFixed(2);
+          entry.operatingProfitYoY = entry.operatingProfitYoY >= 0 ? `+${entry.operatingProfitYoY}%` : `${entry.operatingProfitYoY}%`;
+          totalOperatingProfitYoY += parseFloat(entry.operatingProfitYoY.replace('%', ''));
+          countOperatingProfit++;
+        } else {
+          entry.operatingProfitYoY = null; // 이전 데이터가 0인 경우 null
+        }
+
+        if (previousEntry.netIncome !== 0) {
+          entry.netIncomeYoY = ((netIncome - previousEntry.netIncome) / previousEntry.netIncome * 100).toFixed(2);
+          entry.netIncomeYoY = entry.netIncomeYoY >= 0 ? `+${entry.netIncomeYoY}%` : `${entry.netIncomeYoY}%`;
+          totalNetIncomeYoY += parseFloat(entry.netIncomeYoY.replace('%', ''));
+          countNetIncome++;
+        } else {
+          entry.netIncomeYoY = null; // 이전 데이터가 0인 경우 null
+        }
+
+        if (previousEntry.revenue !== 0) {
+          entry.revenueYoY = ((revenue - previousEntry.revenue) / previousEntry.revenue * 100).toFixed(2);
+          entry.revenueYoY = entry.revenueYoY >= 0 ? `+${entry.revenueYoY}%` : `${entry.revenueYoY}%`;
+          totalRevenueYoY += parseFloat(entry.revenueYoY.replace('%', ''));
+          countRevenue++;
+        } else {
+          entry.revenueYoY = null; // 이전 데이터가 0인 경우 null
+        }
+      } else {
+        // 이전 연도 데이터가 없는 경우
+        entry.operatingProfitYoY = null;
+        entry.netIncomeYoY = null;
+        entry.revenueYoY = null;
+      }
+    });
+  }
+
+  // 평균을 data 객체에 추가
+  data.averageOperatingProfitYoY = (totalOperatingProfitYoY / countOperatingProfit).toFixed(2) + '%';
+  data.averageNetIncomeYoY = (totalNetIncomeYoY / countNetIncome).toFixed(2) + '%';
+  data.averageRevenueYoY = (totalRevenueYoY / countRevenue).toFixed(2) + '%';
 }
 
 app.listen(port, () => {
