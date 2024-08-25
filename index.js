@@ -309,6 +309,18 @@ app.get('/corp_code/year', async(req, res) => {
     }
 
     calculateYoY(results);
+    console.log(results)
+
+    // 데이터 변환
+    for (const year in results) {
+      if (results[year] instanceof Array) {
+          results[year].forEach(entry => {
+              entry.revenue = formatFinancialValue(entry.revenue);
+              entry.operatingProfit = formatFinancialValue(entry.operatingProfit);
+              entry.netIncome = formatFinancialValue(entry.netIncome);
+          });
+      }
+    }
 
     res.json(results);
 
@@ -335,14 +347,6 @@ function fetchFinancialIndicators(corpCode, bsnsYear, reprtCode, fetchedQuarters
         console.log('출력')
         return resolve(1);
       }
-      console.log(stockQuarterData.data)
-
-      // // account_id 필터링, account_id가 오지 않음. postman에서는 오는데 왜?
-      // const targetItems = stockQuarterData.data.list.filter(item => 
-      //   item.account_id === 'ifrs-full_Revenue' ||  //매출액
-      //   item.account_id === 'dart_OperatingIncomeLoss' || //영업이익
-      //   item.account_id === 'ifrs-full_ProfitLoss' //당기순이익
-      // );
 
       // account_nm 필터링
       const targetItems = stockQuarterData.data.list.filter(item => 
@@ -359,8 +363,6 @@ function fetchFinancialIndicators(corpCode, bsnsYear, reprtCode, fetchedQuarters
         operatingProfit: parseInt(targetItems.find(item => item.account_nm === '영업이익')?.thstrm_amount.replace(/,/g, ''), 10),
         netIncome: parseInt(targetItems.find(item => item.account_nm === '당기순이익')?.thstrm_amount.replace(/,/g, ''), 10)
       }; 
-      console.log(fetchedQuarters)
-      console.log(result)
 
       // 가져온 데이터로 해결
       resolve(result);
@@ -548,6 +550,19 @@ function calculateYoY(data) {
   data.averageNetIncomeYoY = (totalNetIncomeYoY / countNetIncome).toFixed(2) + '%';
   data.averageRevenueYoY = (totalRevenueYoY / countRevenue).toFixed(2) + '%';
 }
+
+function formatFinancialValue(value) {
+  if (value >= 1e12) { // 조 단위
+    return `${(value / 1e12).toFixed(0)}조 ${((value % 1e12) / 1e8).toFixed(0)}억원`;
+  } else if (value >= 1e8) { // 억 단위
+    return `${(value / 1e8).toFixed(0)}억원`;
+  } else if (value >= 1e4) { // 천만원 단위
+    return `${(value / 1e4).toFixed(0)}만원`;
+  } else {
+    return `${value}원`; // 그 외의 경우
+  }
+}
+
 
 app.listen(port, () => {
   console.log(`서버가 http://localhost:${port}에서 실행 중입  니다.`);
