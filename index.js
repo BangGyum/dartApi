@@ -184,6 +184,9 @@ app.get('/corp_name', (req, res) => {
 
 // corp_name 하나를 받아서 그걸로 검색
 // 최근 3년 분기실적
+// per 구하려면 현재 주가를 알아야함. 그건 쉽지않을듯, 
+// eps 는 보유주식수를 구하면 됨, 근데 제공하지 않음.
+// 영업이익률 ( 영업이익 / 매출액 ) / 100%
 app.get('/corp_code/quater', async(req, res) => {
   const corpName = req.query.corp_name; // 쿼리 파라미터에서 corp_name 가져오기
   if (!cachedData || cachedData.length === 0) {
@@ -244,6 +247,17 @@ app.get('/corp_code/quater', async(req, res) => {
     }
 
     calculateQoQ(results);
+
+    // 데이터 변환
+    for (const year in results) {
+      if (results[year] instanceof Array) {
+          results[year].forEach(entry => {
+              entry.revenue = formatFinancialValue(entry.revenue);
+              entry.operatingProfit = formatFinancialValue(entry.operatingProfit);
+              entry.netIncome = formatFinancialValue(entry.netIncome);
+          });
+      }
+    }
 
     res.json(results);
 
@@ -399,24 +413,26 @@ function calculateQoQ(data) {
 
       let operatingProfit = entry.operatingProfit
       let netIncome = entry.netIncome
-      let revenue = entry.revenue;
+      let revenue = entry.revenue
 
       if (entry.quater === 4) { //4분기면 1~3분기 순이익 빼줘야함, 그리고 원래 데이터 수정
         operatingProfit = operatingProfit - yearAddOperatingProfit
         netIncome = netIncome - yearAddNetIncome
-        revenue = revenue - yearAddRevenue;
+        revenue = revenue - yearAddRevenue
       }else { //아니면 더하기
         yearAddOperatingProfit += entry.operatingProfit
         yearAddNetIncome += entry.netIncome
-        yearAddRevenue += entry.revenue;
+        yearAddRevenue += entry.revenue
       }
       entry.operatingProfit = operatingProfit
       entry.netIncome = netIncome
-      entry.revenue = revenue;
+      entry.revenue = revenue
+      entry.operatingProfitPercentage = ((operatingProfit / revenue) * 100).toFixed(2) + '%'
 
-      console.log("operatingProfit : " + operatingProfit)
-      console.log("netIncome : " + netIncome)
-      console.log("revenue : " + revenue);
+
+      // console.log("operatingProfit : " + operatingProfit)
+      // console.log("netIncome : " + netIncome)
+      // console.log("revenue : " + revenue);
 
       //1분기이면 전연도 4분기 참고
       if (index === 0) {
@@ -450,6 +466,7 @@ function calculateQoQ(data) {
       } else {
         entry.revenueQoQ = null; // 첫 번째 분기는 이전 데이터가 없으므로 null
       }
+      
 
       // 이전 값 저장
       previousOperatingProfit = operatingProfit;
