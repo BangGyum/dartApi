@@ -225,7 +225,61 @@ app.get('/corp_code/quater', async(req, res) => {
     let results = {}; // 결과를 저장할 객체 생성
     let yearOffset = currentYear
     let fetchedQuarters =  currentQuarter //for문 돌 분기
-    let count  =  12 //최근 12분기
+    let count  =  8 //최근 2년까지만 돌기
+
+    while (count > 0 ) {
+
+      fetchedQuarters--;
+      if (fetchedQuarters === -1) {
+        fetchedQuarters = 3;
+        yearOffset --;
+      }
+      const data = await fetchStockTotqySttus(corpCode, yearOffset,  reprtCodeList[fetchedQuarters], fetchedQuarters);
+      if (data != 1){
+        console.log('1')
+        
+        break
+      }
+      count --
+    }
+
+    function fetchStockTotqySttus(corpCode, bsnsYear, reprtCode, fetchedQuarters){
+      return new Promise(async (resolve, reject) => {
+        const additionalApiUrl = `https://opendart.fss.or.kr/api/stockTotqySttus.json?crtfc_key=${apiKey}&corp_code=${corpCode}&bsns_year=${bsnsYear}&reprt_code=${reprtCode}`;
+        
+        try {
+          // 추가 API에 요청
+          console.log('--------------------------------start api----------------------------')
+          console.log(additionalApiUrl, ' ++ 단일기업 주식 수 시작 ')
+          const stockTotqySttus = await axios.get(additionalApiUrl);
+          console.log(additionalApiUrl, ' ++ 단일기업 주식 수 json 성공 ')
+    
+          if (stockTotqySttus.data.status == '013'){
+            console.log('출력')
+            return resolve(1);
+          }
+    
+          // 보통주, 합계, 비고 중에서 선택
+          const targetItems = stockTotqySttus.data.list.filter(item => 
+            item.se === '보통주'  //보통주
+          );
+
+          //const result = parseInt(targetItems[0].isu_stock_totqy.replace(/,/g, ''), 10)
+          const result = targetItems[0].isu_stock_totqy
+
+          resolve(result);
+        } catch (error) {
+          // 오류 처리 및 프로미스 거부
+          console.error('주식수 API에서 데이터 가져오기 실패:', error);
+          reject(error);
+        }
+      });
+    }
+
+    //다시 초기화
+    yearOffset = currentYear
+    fetchedQuarters =  currentQuarter //for문 돌 분기
+    count  =  12 //최근 12분기
     
     while (count > 0 ) {
 
