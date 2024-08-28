@@ -185,12 +185,14 @@ app.get('/corp_name', (req, res) => {
 // corp_name 하나를 받아서 그걸로 검색
 // 최근 3년 분기실적
 // per 구하려면 현재 주가를 알아야함. 그건 쉽지않을듯, 
-// eps 는 보유주식수를 구하면 됨, 근데 제공하지 않음.
+// eps  = 당기순이익 / 총 발행주식수
 // 영업이익률 ( 영업이익 / 매출액 ) / 100%
 app.get('/corp_code/quater', async(req, res) => {
-  const corpName = req.query.corp_name; // 쿼리 파라미터에서 corp_name 가져오기
+  const corpName = req.query.corp_name // 쿼리 파라미터에서 corp_name 가져오기
+  let totalShares = 0 // 총 주식 수
+
   if (!cachedData || cachedData.length === 0) {
-      return res.status(500).send('캐시된 데이터가 없습니다.');
+      return res.status(500).send('캐시된 데이터가 없습니다.')
   }
 
   // 부분 문자열 일치를 위해 filter 사용
@@ -225,23 +227,25 @@ app.get('/corp_code/quater', async(req, res) => {
     let results = {}; // 결과를 저장할 객체 생성
     let yearOffset = currentYear
     let fetchedQuarters =  currentQuarter //for문 돌 분기
-    let count  =  8 //최근 2년까지만 돌기
+    let count  =  8 //데이터 없을시 최근 2년까지만 돌기
 
     while (count > 0 ) {
 
-      fetchedQuarters--;
+      fetchedQuarters--; //index이므로
       if (fetchedQuarters === -1) {
         fetchedQuarters = 3;
         yearOffset --;
       }
       const data = await fetchStockTotqySttus(corpCode, yearOffset,  reprtCodeList[fetchedQuarters], fetchedQuarters);
-      if (data != 1){
-        console.log('1')
-        
+      if (data != -1){ //제대로된 값이 왔따면 종료
+        totalShares = data
         break
       }
+      
       count --
     }
+
+    console.log(totalShares)
 
     function fetchStockTotqySttus(corpCode, bsnsYear, reprtCode, fetchedQuarters){
       return new Promise(async (resolve, reject) => {
@@ -256,7 +260,7 @@ app.get('/corp_code/quater', async(req, res) => {
     
           if (stockTotqySttus.data.status == '013'){
             console.log('출력')
-            return resolve(1);
+            return resolve(-1);
           }
     
           // 보통주, 합계, 비고 중에서 선택
@@ -264,8 +268,8 @@ app.get('/corp_code/quater', async(req, res) => {
             item.se === '보통주'  //보통주
           );
 
-          //const result = parseInt(targetItems[0].isu_stock_totqy.replace(/,/g, ''), 10)
-          const result = targetItems[0].isu_stock_totqy
+          const result = parseInt(targetItems[0].isu_stock_totqy.replace(/,/g, ''), 10)
+          //const result = targetItems[0].isu_stock_totqy
 
           resolve(result);
         } catch (error) {
@@ -300,7 +304,7 @@ app.get('/corp_code/quater', async(req, res) => {
         
     }
 
-    calculateQoQ(results);
+    calculateQoQ(results, totalShares);
 
     // 데이터 변환
     for (const year in results) {
@@ -443,7 +447,7 @@ function fetchFinancialIndicators(corpCode, bsnsYear, reprtCode, fetchedQuarters
 }
 
 // 상승률 계산 함수
-function calculateQoQ(data) {
+function calculateQoQ(data, totalShares) {
 
   let totalOperatingProfitQoQ = 0; // 영업이익 상승률 변수
   let totalNetIncomeQoQ = 0; // 영업이익 상승률 변수
@@ -482,6 +486,7 @@ function calculateQoQ(data) {
       entry.netIncome = netIncome
       entry.revenue = revenue
       entry.operatingProfitPercentage = ((operatingProfit / revenue) * 100).toFixed(2) + '%'
+      entry.eps = netIncome/totalShares
 
 
       // console.log("operatingProfit : " + operatingProfit)
