@@ -181,12 +181,48 @@ app.get('/corp_name', (req, res) => {
       res.status(404).send('해당 corp_code를 찾을 수 없습니다.');
   }
 });
+///////////////////////////////////////////////
+function fetchStockTotqySttus(corpCode, bsnsYear, reprtCode, fetchedQuarters){
+  return new Promise(async (resolve, reject) => {
+    const additionalApiUrl = `https://opendart.fss.or.kr/api/stockTotqySttus.json?crtfc_key=${apiKey}&corp_code=${corpCode}&bsns_year=${bsnsYear}&reprt_code=${reprtCode}`;
+    
+    try {
+      // 추가 API에 요청
+      console.log('--------------------------------start api----------------------------')
+      console.log(additionalApiUrl, ' ++ 단일기업 주식 수 시작 ')
+      const stockTotqySttus = await axios.get(additionalApiUrl);
+      console.log(additionalApiUrl, ' ++ 단일기업 주식 수 json 성공 ')
+
+      if (stockTotqySttus.data.status == '013'){
+        console.log('출력')
+        return resolve(-1);
+      }
+
+      // 보통주, 합계, 비고 중에서 선택
+      const targetItems = stockTotqySttus.data.list.filter(item => 
+        item.se === '보통주'  //보통주
+      );
+
+      const result = parseInt(targetItems[0].isu_stock_totqy.replace(/,/g, ''), 10)
+      //const result = targetItems[0].isu_stock_totqy
+
+      resolve(result);
+    } catch (error) {
+      // 오류 처리 및 프로미스 거부
+      console.error('주식수 API에서 데이터 가져오기 실패:', error);
+      reject(error);
+    }
+  });
+}
+
+/////////////////////////////////////////////
 
 // corp_name 하나를 받아서 그걸로 검색
 // 최근 3년 분기실적
 // per 구하려면 현재 주가를 알아야함. 그건 쉽지않을듯, 
 // eps  = 당기순이익 / 총 발행주식수
 // 영업이익률 ( 영업이익 / 매출액 ) / 100%
+// 1분기 이익률을 구하기 위해선 순수 4분기 값이 필요함. (1년 전부터 돌리고, 데이터는 안 보이게)
 app.get('/corp_code/quater', async(req, res) => {
   const corpName = req.query.corp_name // 쿼리 파라미터에서 corp_name 가져오기
   let totalShares = 0 // 총 주식 수
@@ -247,43 +283,18 @@ app.get('/corp_code/quater', async(req, res) => {
 
     console.log(totalShares)
 
-    function fetchStockTotqySttus(corpCode, bsnsYear, reprtCode, fetchedQuarters){
-      return new Promise(async (resolve, reject) => {
-        const additionalApiUrl = `https://opendart.fss.or.kr/api/stockTotqySttus.json?crtfc_key=${apiKey}&corp_code=${corpCode}&bsns_year=${bsnsYear}&reprt_code=${reprtCode}`;
-        
-        try {
-          // 추가 API에 요청
-          console.log('--------------------------------start api----------------------------')
-          console.log(additionalApiUrl, ' ++ 단일기업 주식 수 시작 ')
-          const stockTotqySttus = await axios.get(additionalApiUrl);
-          console.log(additionalApiUrl, ' ++ 단일기업 주식 수 json 성공 ')
-    
-          if (stockTotqySttus.data.status == '013'){
-            console.log('출력')
-            return resolve(-1);
-          }
-    
-          // 보통주, 합계, 비고 중에서 선택
-          const targetItems = stockTotqySttus.data.list.filter(item => 
-            item.se === '보통주'  //보통주
-          );
-
-          const result = parseInt(targetItems[0].isu_stock_totqy.replace(/,/g, ''), 10)
-          //const result = targetItems[0].isu_stock_totqy
-
-          resolve(result);
-        } catch (error) {
-          // 오류 처리 및 프로미스 거부
-          console.error('주식수 API에서 데이터 가져오기 실패:', error);
-          reject(error);
-        }
-      });
-    }
 
     //다시 초기화
     yearOffset = currentYear
     fetchedQuarters =  currentQuarter //for문 돌 분기
     count  =  12 //최근 12분기
+
+    console.log ('분기 수 : ')
+
+   
+    count += 4 //1년 전까지 계산해서 상승률을 구해야함. 그리고 다시 삭제
+    
+    console.log('실제 분기 수 :  ')
     
     while (count > 0 ) {
 
@@ -460,6 +471,8 @@ function calculateQoQ(data, totalShares) {
   let previousNetIncome = null;
   let previousRevenue = null;
 
+  console.log(data)
+
   for (const year in data) {
     let yearAddOperatingProfit = 0  //연도별 누적 변수
     let yearAddNetIncome = 0
@@ -467,7 +480,7 @@ function calculateQoQ(data, totalShares) {
 
     data[year].forEach((entry, index) => {
       // 문자열을 숫자로 변환 (쉼표 제거)
-      console.log(entry.quater)
+      
 
       let operatingProfit = entry.operatingProfit
       let netIncome = entry.netIncome
@@ -557,6 +570,29 @@ function calculateQoQ(data, totalShares) {
   data.averageOperatingProfitQoQ = (totalOperatingProfitQoQ / countOperatingProfit).toFixed(2) + '%';
   data.averageNetIncomeQoQ = (totalNetIncomeQoQ / countNetIncome).toFixed(2) + '%';
   data.averageRevenueQoQ = (totalRevenueQoQ / countRevenue).toFixed(2)+ '%';
+
+  let deleteYear = Object.keys(data)[0]; // 첫 번째 연도
+  let deleteQuarter = data[deleteYear][0].quater; // 첫 번째 연도의 첫 번째 쿼터
+
+  
+
+  let count = 4
+
+  while (count > 0){
+    console.log (deleteYear + '/' + deleteQuarter)
+    const indexToDelete = data[deleteYear].findIndex(q => q.quater === deleteQuarter);
+
+    if (indexToDelete !== -1) {data[deleteYear].splice(indexToDelete, 1);} 
+    else console.log('데이터를 찾을 수 없습니다.' );
+    
+    if (deleteQuarter == 4) {deleteQuarter ==1; deleteYear += 1;}
+    else deleteQuarter += 1;
+  
+    count -= 1
+  }
+
+
+  //맨 처음 연도와 쿼터를 가지고, 이후 네 개의 분기 지우기 
 }
 
 // 상승률 계산 함수 (YOY 버전)
@@ -625,6 +661,7 @@ function calculateYoY(data) {
   data.averageOperatingProfitYoY = (totalOperatingProfitYoY / countOperatingProfit).toFixed(2) + '%';
   data.averageNetIncomeYoY = (totalNetIncomeYoY / countNetIncome).toFixed(2) + '%';
   data.averageRevenueYoY = (totalRevenueYoY / countRevenue).toFixed(2) + '%';
+
 }
 
 function formatFinancialValue(value) {
