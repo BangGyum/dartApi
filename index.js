@@ -571,51 +571,23 @@ function calculateQoQ(data, totalShares) {
   data.averageNetIncomeQoQ = (totalNetIncomeQoQ / countNetIncome).toFixed(2) + '%';
   data.averageRevenueQoQ = (totalRevenueQoQ / countRevenue).toFixed(2)+ '%';
 
-  // 첫 번째 연도와 쿼터 가져오기
-  const firstYear = Object.keys(data)[0];
-  const firstQuarter = data[firstYear][0].quater;
 
-  // 삭제할 분기 수
-  const quartersToDelete = 4;
-  let deletedCount = 0;
+  let deleteYear = Number(Object.keys(data)[0]); // 첫 번째 연도
+  let deleteQuarter = Number(data[deleteYear][0].quater); // 첫 번째 연도의 첫 번째 쿼터
+  let deleteCount = 4
 
-// 첫 번째 연도와 쿼터 이후의 분기 삭제
-for (let year = parseInt(firstYear); deletedCount < quartersToDelete; year++) {
-  const yearData = data[year.toString()];
-  
-  if (yearData) {
-    for (let i = (year === parseInt(firstYear) ? firstQuarter : 1); i <= 4; i++) {
-      const indexToDelete = yearData.findIndex(q => q.quater === i);
-      if (indexToDelete !== -1) {
-        yearData.splice(indexToDelete, 1);
-        deletedCount++;
-        
-        if (deletedCount >= quartersToDelete) {
-          break;
-        }
-      }
-    }
-  }
-}
+  while (deleteCount > 0){
+    console.log (deleteYear + '/' + deleteQuarter)
+    const indexToDelete = data[deleteYear].findIndex(q => q.quater === deleteQuarter);
 
-
-
-  //let deleteYear = Object.keys(data)[0]; // 첫 번째 연도
-  //let deleteQuarter = data[deleteYear][0].quater; // 첫 번째 연도의 첫 번째 쿼터
-  //let count = 4
-
-  // while (count > 0){
-  //   console.log (deleteYear + '/' + deleteQuarter)
-  //   const indexToDelete = data[deleteYear].findIndex(q => q.quater === deleteQuarter);
-
-  //   if (indexToDelete !== -1) {data[deleteYear].splice(indexToDelete, 1);} 
-  //   else console.log('데이터를 찾을 수 없습니다.' );
+    if (indexToDelete !== -1) {data[deleteYear].splice(indexToDelete, 1);} 
+    else console.log('데이터를 찾을 수 없습니다.' );
     
-  //   if (deleteQuarter == 4) {deleteQuarter ==1; deleteYear += 1;}
-  //   else deleteQuarter += 1;
+    if (deleteQuarter == 4) {deleteQuarter =1; deleteYear += 1;}
+    else deleteQuarter += 1;
   
-  //   count -= 1
-  // }
+    deleteCount -= 1
+  }
 
 
   //맨 처음 연도와 쿼터를 가지고, 이후 네 개의 분기 지우기 
