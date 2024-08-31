@@ -315,6 +315,8 @@ app.get('/corp_code/quater', async(req, res) => {
         
     }
 
+    console.log(results)
+
     calculateQoQ(results, totalShares);
 
     // 데이터 변환
@@ -429,12 +431,14 @@ function fetchFinancialIndicators(corpCode, bsnsYear, reprtCode, fetchedQuarters
         console.log('출력')
         return resolve(1);
       }
+      //console.log(stockQuarterData.data)
 
       // account_nm 필터링
       const targetItems = stockQuarterData.data.list.filter(item => 
         item.account_nm === '매출액' ||  //매출액
         item.account_nm === '영업이익' || //영업이익
-        item.account_nm === '당기순이익' //당기순이익 , 포괄손익계산서와 그냥 손익계산서가 존재 .
+        item.account_nm === '당기순이익' ||  //당기순이익 , 포괄손익계산서와 그냥 손익계산서가 존재 .
+        (item.fs_div === 'CFS' && item.account_nm === '자본총계')
         //자본 총계 추가할 예정----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
       );
@@ -445,7 +449,8 @@ function fetchFinancialIndicators(corpCode, bsnsYear, reprtCode, fetchedQuarters
         // operatingProfit: targetItems.find(item => item.account_nm === '영업이익')?.thstrm_amount,
         // netIncome: targetItems.find(item => item.account_nm === '당기순이익')?.thstrm_amount
         operatingProfit: parseInt(targetItems.find(item => item.account_nm === '영업이익')?.thstrm_amount.replace(/,/g, ''), 10),
-        netIncome: parseInt(targetItems.find(item => item.account_nm === '당기순이익')?.thstrm_amount.replace(/,/g, ''), 10)
+        netIncome: parseInt(targetItems.find(item => item.account_nm === '당기순이익')?.thstrm_amount.replace(/,/g, ''), 10),
+        totalCapital : parseInt(targetItems.find(item => item.account_nm === '자본총계')?.thstrm_amount.replace(/,/g, ''), 10)
       }; 
 
       // 가져온 데이터로 해결
