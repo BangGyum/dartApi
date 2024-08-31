@@ -220,8 +220,9 @@ function fetchStockTotqySttus(corpCode, bsnsYear, reprtCode, fetchedQuarters){
 // corp_name 하나를 받아서 그걸로 검색
 // 최근 3년 분기실적
 // per 구하려면 현재 주가를 알아야함. 그건 쉽지않을듯, 
-// eps  = 당기순이익 / 총 발행주식수
+// eps (주당 순이익)  = 당기순이익 / 총 발행주식수
 // 영업이익률 ( 영업이익 / 매출액 ) / 100%
+// roe Return On Equity (자기자본 이익률)
 // 1분기 이익률을 구하기 위해선 순수 4분기 값이 필요함. (1년 전부터 돌리고, 데이터는 안 보이게)
 app.get('/corp_code/quater', async(req, res) => {
   const corpName = req.query.corp_name // 쿼리 파라미터에서 corp_name 가져오기
@@ -281,7 +282,6 @@ app.get('/corp_code/quater', async(req, res) => {
       count --
     }
 
-    console.log(totalShares)
 
 
     //다시 초기화
@@ -392,7 +392,6 @@ app.get('/corp_code/year', async(req, res) => {
     }
 
     calculateYoY(results);
-    console.log(results)
 
     // 데이터 변환
     for (const year in results) {
@@ -436,6 +435,8 @@ function fetchFinancialIndicators(corpCode, bsnsYear, reprtCode, fetchedQuarters
         item.account_nm === '매출액' ||  //매출액
         item.account_nm === '영업이익' || //영업이익
         item.account_nm === '당기순이익' //당기순이익 , 포괄손익계산서와 그냥 손익계산서가 존재 .
+        //자본 총계 추가할 예정----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
       );
 
       const result = {
@@ -471,7 +472,6 @@ function calculateQoQ(data, totalShares) {
   let previousNetIncome = null;
   let previousRevenue = null;
 
-  console.log(data)
 
   for (const year in data) {
     let yearAddOperatingProfit = 0  //연도별 누적 변수
