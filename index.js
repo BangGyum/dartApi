@@ -224,6 +224,9 @@ function fetchStockTotqySttus(corpCode, bsnsYear, reprtCode, fetchedQuarters){
 // 영업이익률 ( 영업이익 / 매출액 ) / 100%
 // roe Return On Equity (자기자본 이익률)
 // 1분기 이익률을 구하기 위해선 순수 4분기 값이 필요함. (1년 전부터 돌리고, 데이터는 안 보이게)
+// roa (Return on Assets)  = (당기순이익 / 총자산=(ㅋ )) X 100(%)  ==자산
+//총자산: 기업이 보유하고 있는 모든 자산의 총합입니다. 여기에는 현금, 재고, 부동산, 설비 등이 포함됩니다.
+//자본총계: 기업의 자산에서 부채를 뺀 나머지 부분으로, 주주가 소유한 자산의 가치입니다. 이는 자산총계에서 부채총계를 차감하여 계산합니다.
 app.get('/corp_code/quater', async(req, res) => {
   const corpName = req.query.corp_name // 쿼리 파라미터에서 corp_name 가져오기
   let totalShares = 0 // 총 주식 수
@@ -438,7 +441,8 @@ function fetchFinancialIndicators(corpCode, bsnsYear, reprtCode, fetchedQuarters
         item.account_nm === '매출액' ||  //매출액
         item.account_nm === '영업이익' || //영업이익
         item.account_nm === '당기순이익' ||  //당기순이익 , 포괄손익계산서와 그냥 손익계산서가 존재 .
-        (item.fs_div === 'CFS' && item.account_nm === '자본총계')
+        (item.fs_div === 'CFS' && item.account_nm === '자본총계') ||
+        (item.fs_div === 'CFS' && item.account_nm === '자산총계') 
         //자본 총계 추가할 예정----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
       );
