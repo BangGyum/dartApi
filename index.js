@@ -203,7 +203,7 @@ function fetchStockTotqySttus(corpCode, bsnsYear, reprtCode, fetchedQuarters){
         item.se === '보통주'  //보통주
       );
 
-      const result = parseInt(targetItems[0].isu_stock_totqy.replace(/,/g, ''), 10)
+      const result = parseInt(targetItems[0].now_to_isu_stock_totqy.replace(/,/g, ''), 10)
       //const result = targetItems[0].isu_stock_totqy
 
       resolve(result);
@@ -500,6 +500,7 @@ function calculateQoQ(data, totalShares) {
         yearAddNetIncome += entry.netIncome
         yearAddRevenue += entry.revenue
       }
+      console.log('당기순이익 : ' + netIncome + '/ 총주식수 : ' + totalShares)
       entry.operatingProfit = operatingProfit
       entry.netIncome = netIncome
       entry.revenue = revenue
