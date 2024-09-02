@@ -224,9 +224,12 @@ function fetchStockTotqySttus(corpCode, bsnsYear, reprtCode, fetchedQuarters){
 // 영업이익률 ( 영업이익 / 매출액 ) / 100%
 // roe Return On Equity (자기자본 이익률)
 // 1분기 이익률을 구하기 위해선 순수 4분기 값이 필요함. (1년 전부터 돌리고, 데이터는 안 보이게)
-// roa (Return on Assets)  = (당기순이익 / 총자산=(ㅋ )) X 100(%)  ==자산
+// roa (Return on Assets)  = (당기순이익 / 총자산) X 100(%)  ==자산
 //총자산: 기업이 보유하고 있는 모든 자산의 총합입니다. 여기에는 현금, 재고, 부동산, 설비 등이 포함됩니다.
 //자본총계: 기업의 자산에서 부채를 뺀 나머지 부분으로, 주주가 소유한 자산의 가치입니다. 이는 자산총계에서 부채총계를 차감하여 계산합니다.
+
+//https://openapi.ls-sec.co.kr/apiservice?group_id=73142d9f-1983-48d2-8543-89b75535d34c&api_id=54a99b02-dbba-4057-8756-9ac759c9a2ed
+//현재 주가를 알려면 타 증권의 open api를 써야함. 위는 ls증권 (구 )
 app.get('/corp_code/quater', async(req, res) => {
   const corpName = req.query.corp_name // 쿼리 파라미터에서 corp_name 가져오기
   let totalShares = 0 // 총 주식 수
@@ -454,7 +457,8 @@ function fetchFinancialIndicators(corpCode, bsnsYear, reprtCode, fetchedQuarters
         // netIncome: targetItems.find(item => item.account_nm === '당기순이익')?.thstrm_amount
         operatingProfit: parseInt(targetItems.find(item => item.account_nm === '영업이익')?.thstrm_amount.replace(/,/g, ''), 10),
         netIncome: parseInt(targetItems.find(item => item.account_nm === '당기순이익')?.thstrm_amount.replace(/,/g, ''), 10),
-        totalCapital : parseInt(targetItems.find(item => item.account_nm === '자본총계')?.thstrm_amount.replace(/,/g, ''), 10)
+        totalCapital : parseInt(targetItems.find(item => item.account_nm === '자본총계')?.thstrm_amount.replace(/,/g, ''), 10),
+        totalAsset : parseInt(targetItems.find(item => item.account_nm === '자산총계')?.thstrm_amount.replace(/,/g, ''), 10),
       }; 
 
       // 가져온 데이터로 해결
@@ -510,6 +514,7 @@ function calculateQoQ(data, totalShares) {
       entry.revenue = revenue
       entry.operatingProfitPercentage = ((operatingProfit / revenue) * 100).toFixed(2) + '%'
       entry.eps = netIncome/totalShares
+      entry.roa = (netIncome/ entry.totalAsset) * 100 * 4
 
 
       // console.log("operatingProfit : " + operatingProfit)
