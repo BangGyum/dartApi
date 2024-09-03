@@ -239,6 +239,7 @@ function fetchStockTotqySttus(corpCode, bsnsYear, reprtCode, fetchedQuarters){
 //부채비율
 //주당 배당금 (어디서 가져오지)
 //위만 
+//node-cron 을 사용하여 db에 배치를 저장하는 방식 구현?
 
 //https://openapi.ls-sec.co.kr/apiservice?group_id=73142d9f-1983-48d2-8543-89b75535d34c&api_id=54a99b02-dbba-4057-8756-9ac759c9a2ed
 //현재 주가를 알려면 타 증권의 open api를 써야함. 위는 ls증권 (구 )
