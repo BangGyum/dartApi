@@ -228,6 +228,18 @@ function fetchStockTotqySttus(corpCode, bsnsYear, reprtCode, fetchedQuarters){
 //총자산: 기업이 보유하고 있는 모든 자산의 총합입니다. 여기에는 현금, 재고, 부동산, 설비 등이 포함됩니다.
 //자본총계: 기업의 자산에서 부채를 뺀 나머지 부분으로, 주주가 소유한 자산의 가치입니다. 이는 자산총계에서 부채총계를 차감하여 계산합니다.
 
+//매출액
+//영업이익
+//당기순이익
+//지배주주순이익
+//비지배주주순이익
+//영업이익률
+//순이익률/
+//ROE
+//부채비율
+//주당 배당금 (어디서 가져오지)
+//위만 
+
 //https://openapi.ls-sec.co.kr/apiservice?group_id=73142d9f-1983-48d2-8543-89b75535d34c&api_id=54a99b02-dbba-4057-8756-9ac759c9a2ed
 //현재 주가를 알려면 타 증권의 open api를 써야함. 위는 ls증권 (구 )
 app.get('/corp_code/quater', async(req, res) => {
