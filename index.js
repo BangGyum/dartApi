@@ -19,10 +19,12 @@ const cron = require('node-cron');
  # │ │ │ │ │ │
  # * * * * * *
 */
-cron.schedule('* * * * *', () => {
-  console.log('running a task every minute');
+//이걸 이제 매일 한번씩, db에
+cron.schedule('* * * * *', async() => {
+  await downloadAndUnzipFile();
 }, {
-  timezone: 'Asia/Seoul'
+  scheduled: true, // 자동으로 실행
+  timezone: "Asia/Seoul" // 서울 시간대 설정
 });
 
 //https://opendart.fss.or.kr/guide/detail.do?apiGrpCd=DS003&apiId=2019020
