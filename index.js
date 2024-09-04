@@ -7,6 +7,23 @@ const xml2js = require('xml2js');
 const AdmZip = require('adm-zip');
 const app = express()
 const port = 3000
+const cron = require('node-cron');
+/*
+ # ┌────────────── second (optional)
+ # │ ┌──────────── minute
+ # │ │ ┌────────── hour
+ # │ │ │ ┌──────── day of month
+ # │ │ │ │ ┌────── month
+ # │ │ │ │ │ ┌──── day of week
+ # │ │ │ │ │ │
+ # │ │ │ │ │ │
+ # * * * * * *
+*/
+cron.schedule('* * * * *', () => {
+  console.log('running a task every minute');
+}, {
+  timezone: 'Asia/Seoul'
+});
 
 //https://opendart.fss.or.kr/guide/detail.do?apiGrpCd=DS003&apiId=2019020
 
@@ -240,6 +257,8 @@ function fetchStockTotqySttus(corpCode, bsnsYear, reprtCode, fetchedQuarters){
 //주당 배당금 (어디서 가져오지)
 //위만 
 //node-cron 을 사용하여 db에 배치를 저장하는 방식 구현?
+
+//npm istall --save node-cron
 
 //https://openapi.ls-sec.co.kr/apiservice?group_id=73142d9f-1983-48d2-8543-89b75535d34c&api_id=54a99b02-dbba-4057-8756-9ac759c9a2ed
 //현재 주가를 알려면 타 증권의 open api를 써야함. 위는 ls증권 (구 )
