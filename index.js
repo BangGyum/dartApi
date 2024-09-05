@@ -20,16 +20,13 @@ const cron = require('node-cron');
  # * * * * * *
 */
 //이걸 이제 매일 한번씩, db에
-cron.schedule('* * * * *', async() => {
+//임시로 5분마다
+cron.schedule('*/5 * * * *', async() => {
   await downloadAndUnzipFile();
 }, {
   scheduled: true, // 자동으로 실행
   timezone: "Asia/Seoul" // 서울 시간대 설정
 });
-
-//https://opendart.fss.or.kr/guide/detail.do?apiGrpCd=DS003&apiId=2019020
-
-
 
 const apiKey = process.env.API_KEY;
 
@@ -52,8 +49,6 @@ const yearsList = [];
 for (let i = 0; i <= 3; i++) {
     yearsList.push(currentYear - i); // 현재 연도에서 0, 1, 2, 3년 전 연도 추가
 }
-
-
 
 //npm install express axios adm-zip  //zip파일 풀기
 //npm install express axios node-cron xml2js  //주기적으로 호출하기 
@@ -234,8 +229,6 @@ function fetchStockTotqySttus(corpCode, bsnsYear, reprtCode, fetchedQuarters){
   });
 }
 
-/////////////////////////////////////////////
-
 // corp_name 하나를 받아서 그걸로 검색
 // 최근 3년 분기실적
 // per 구하려면 현재 주가를 알아야함. 그건 쉽지않을듯, 
@@ -322,15 +315,12 @@ app.get('/corp_code/quater', async(req, res) => {
       count --
     }
 
-
-
     //다시 초기화
     yearOffset = currentYear
     fetchedQuarters =  currentQuarter //for문 돌 분기
     count  =  12 //최근 12분기
 
     console.log ('분기 수 : ')
-
    
     count += 4 //1년 전까지 계산해서 상승률을 구해야함. 그리고 다시 삭제
     
@@ -526,9 +516,7 @@ function calculateQoQ(data, totalShares) {
     let yearAddRevenue = 0;
 
     data[year].forEach((entry, index) => {
-      // 문자열을 숫자로 변환 (쉼표 제거)
-      
-
+      // 문자열을 숫자로 변환 (쉼표 제거
       let operatingProfit = entry.operatingProfit
       let netIncome = entry.netIncome
       let revenue = entry.revenue
@@ -549,7 +537,6 @@ function calculateQoQ(data, totalShares) {
       entry.operatingProfitPercentage = ((operatingProfit / revenue) * 100).toFixed(2) + '%'
       entry.eps = netIncome/totalShares
       entry.roa = (netIncome/ entry.totalAsset) * 100 * 4
-
 
       // console.log("operatingProfit : " + operatingProfit)
       // console.log("netIncome : " + netIncome)
@@ -587,7 +574,6 @@ function calculateQoQ(data, totalShares) {
       } else {
         entry.revenueQoQ = null; // 첫 번째 분기는 이전 데이터가 없으므로 null
       }
-      
 
       // 이전 값 저장
       previousOperatingProfit = operatingProfit;
@@ -620,13 +606,13 @@ function calculateQoQ(data, totalShares) {
   data.averageNetIncomeQoQ = (totalNetIncomeQoQ / countNetIncome).toFixed(2) + '%';
   data.averageRevenueQoQ = (totalRevenueQoQ / countRevenue).toFixed(2)+ '%';
 
-
+  //맨 처음 연도와 쿼터를 가지고, 이후 네 개의 분기 지우기 
   let deleteYear = Number(Object.keys(data)[0]); // 첫 번째 연도
   let deleteQuarter = Number(data[deleteYear][0].quater); // 첫 번째 연도의 첫 번째 쿼터
   let deleteCount = 4
 
   while (deleteCount > 0){
-    console.log (deleteYear + '/' + deleteQuarter)
+    //console.log (deleteYear + '/' + deleteQuarter)
     const indexToDelete = data[deleteYear].findIndex(q => q.quater === deleteQuarter);
 
     if (indexToDelete !== -1) {data[deleteYear].splice(indexToDelete, 1);} 
@@ -638,8 +624,6 @@ function calculateQoQ(data, totalShares) {
     deleteCount -= 1
   }
 
-
-  //맨 처음 연도와 쿼터를 가지고, 이후 네 개의 분기 지우기 
 }
 
 // 상승률 계산 함수 (YOY 버전)
@@ -722,7 +706,6 @@ function formatFinancialValue(value) {
     return `${value}원`; // 그 외의 경우
   }
 }
-
 
 app.listen(port, () => {
   console.log(`서버가 http://localhost:${port}에서 실행 중입  니다.`);
