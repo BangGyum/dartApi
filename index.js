@@ -248,7 +248,7 @@ function fetchStockTotqySttus(corpCode, bsnsYear, reprtCode, fetchedQuarters){
 //영업이익률
 //순이익률/
 //ROE
-//부채비율
+//부채비율  => 부채총액을 자기자본(총자산 - 총부채)으로 나눈 뒤 * 100
 //주당 배당금 (어디서 가져오지)
 //위만 
 //node-cron 을 사용하여 db에 배치를 저장하는 방식 구현?
@@ -469,7 +469,8 @@ function fetchFinancialIndicators(corpCode, bsnsYear, reprtCode, fetchedQuarters
         item.account_nm === '영업이익' || //영업이익
         item.account_nm === '당기순이익' ||  //당기순이익 , 포괄손익계산서와 그냥 손익계산서가 존재 .
         (item.fs_div === 'CFS' && item.account_nm === '자본총계') ||
-        (item.fs_div === 'CFS' && item.account_nm === '자산총계') 
+        (item.fs_div === 'CFS' && item.account_nm === '자산총계') ||
+        (item.fs_div === 'CFS' && item.account_nm === '부채총계')
         //자본 총계 추가할 예정----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
       );
@@ -483,6 +484,7 @@ function fetchFinancialIndicators(corpCode, bsnsYear, reprtCode, fetchedQuarters
         netIncome: parseInt(targetItems.find(item => item.account_nm === '당기순이익')?.thstrm_amount.replace(/,/g, ''), 10),
         totalCapital : parseInt(targetItems.find(item => item.account_nm === '자본총계')?.thstrm_amount.replace(/,/g, ''), 10),
         totalAsset : parseInt(targetItems.find(item => item.account_nm === '자산총계')?.thstrm_amount.replace(/,/g, ''), 10),
+        totalDebt : parseInt(targetItems.find(item => item.account_nm === '부채총계')?.thstrm_amount.replace(/,/g, ''), 10),
       }; 
 
       // 가져온 데이터로 해결
@@ -520,6 +522,7 @@ function calculateQoQ(data, totalShares) {
       let operatingProfit = entry.operatingProfit
       let netIncome = entry.netIncome
       let revenue = entry.revenue
+      let totalDebt = entry.totalDebt
 
       if (entry.quater === 4) { //4분기면 1~3분기 순이익 빼줘야함, 그리고 원래 데이터 수정
         operatingProfit = operatingProfit - yearAddOperatingProfit
@@ -537,6 +540,7 @@ function calculateQoQ(data, totalShares) {
       entry.operatingProfitPercentage = ((operatingProfit / revenue) * 100).toFixed(2) + '%'
       entry.eps = netIncome/totalShares
       entry.roa = (netIncome/ entry.totalAsset) * 100 * 4
+      entry.debtRatio = ((totalDebt / entry.totalAsset) * 100).toFixed(2) + '%'
 
       // console.log("operatingProfit : " + operatingProfit)
       // console.log("netIncome : " + netIncome)
