@@ -248,7 +248,7 @@ function fetchStockTotqySttus(corpCode, bsnsYear, reprtCode, fetchedQuarters){
 //영업이익률
 //순이익률/
 //ROE
-//부채비율  => 부채총액을 자기자본(총자산 - 총부채)으로 나눈 뒤 * 100
+//부채비율  => 부채총액을 자기자본(총자산 - 총부채 ->자본총계)으로 나눈 뒤 * 100
 //주당 배당금 (어디서 가져오지)
 //위만 
 //node-cron 을 사용하여 db에 배치를 저장하는 방식 구현?
@@ -540,7 +540,7 @@ function calculateQoQ(data, totalShares) {
       entry.operatingProfitPercentage = ((operatingProfit / revenue) * 100).toFixed(2) + '%'
       entry.eps = netIncome/totalShares
       entry.roa = (netIncome/ entry.totalAsset) * 100 * 4
-      entry.debtRatio = ((totalDebt / entry.totalAsset) * 100).toFixed(2) + '%'
+      entry.debtRatio = ((totalDebt / entry.totalCapital) * 100).toFixed(2) + '%' //자본총계
 
       // console.log("operatingProfit : " + operatingProfit)
       // console.log("netIncome : " + netIncome)
