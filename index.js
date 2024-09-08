@@ -257,6 +257,8 @@ function fetchStockTotqySttus(corpCode, bsnsYear, reprtCode, fetchedQuarters){
 
 //https://openapi.ls-sec.co.kr/apiservice?group_id=73142d9f-1983-48d2-8543-89b75535d34c&api_id=54a99b02-dbba-4057-8756-9ac759c9a2ed
 //현재 주가를 알려면 타 증권의 open api를 써야함. 위는 ls증권 (구 )
+//이것까지 하긴 좀 해비한것 같음.
+//한번 postgreSQL 연결?
 app.get('/corp_code/quater', async(req, res) => {
   const corpName = req.query.corp_name // 쿼리 파라미터에서 corp_name 가져오기
   let totalShares = 0 // 총 주식 수
