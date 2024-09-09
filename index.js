@@ -259,6 +259,9 @@ function fetchStockTotqySttus(corpCode, bsnsYear, reprtCode, fetchedQuarters){
 //현재 주가를 알려면 타 증권의 open api를 써야함. 위는 ls증권 (구 )
 //이것까지 하긴 좀 해비한것 같음.
 //한번 postgreSQL 연결?
+//나중에 mysql로 하는것으로. postgre는 gis 쪽이 빠름.
+//https://developers.kakao.com/docs/latest/ko/getting-started/quick-start
+//카카오 api 연결해야하는데 유심이슈..
 app.get('/corp_code/quater', async(req, res) => {
   const corpName = req.query.corp_name // 쿼리 파라미터에서 corp_name 가져오기
   let totalShares = 0 // 총 주식 수
